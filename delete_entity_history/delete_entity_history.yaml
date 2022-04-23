@@ -6,7 +6,7 @@ script:
   delete_entity_history_status:
     alias: удаление истории объектов
     sequence:
-      - service: pro_python_script.exec
+      - service: python_script.exec
         data:
           cache: false
           d_entity: '{{d_entity}}'
