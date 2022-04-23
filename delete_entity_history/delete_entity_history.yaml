@@ -28,7 +28,7 @@ script:
         default: []
     mode: queued
     variables:
-      d_entity: '{{[d_entity|default(0)]}}'
+      d_entity: '{{d_entity|default(0)}}'
       d_text: '{{d_text|default(0)}}'
       d_day: '{{d_day|default(30)}}'
       d_del_attr: '{{d_del_attr|default(False)}}'
