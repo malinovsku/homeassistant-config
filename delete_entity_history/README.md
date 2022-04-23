@@ -6,3 +6,6 @@
 - user_postgres: user
 - host_postgres: host
 - port_postgres: port
+***
+# Пример запуска
+![This is an image](https://github.com/malinovsku/homeassistant-config/blob/main/delete_entity_history/delete_entity_history.png)
