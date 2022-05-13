@@ -113,11 +113,6 @@ condition:
         entity_id: !input no_trigger8
         below: '1'
         attribute: current
-      - condition: state
-        entity_id: input_boolean.priznak_esli_doma_net_nikogo
-        state: 'off'
-      # - condition: template
-      #   value_template: !input no_trigger10
 action:
   - service: scene.create
     data:
