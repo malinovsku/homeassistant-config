@@ -94,7 +94,7 @@ sensor:
 script:
   reolink_download_file:
     alias: Загрузка видео с камеры Reolink
-    mode: parallel
+    mode: queued
     max: 10
     fields:
       name_fale:
