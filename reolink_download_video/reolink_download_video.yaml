@@ -166,3 +166,7 @@ script:
                 with requests.get(url, params=params, stream=True, verify=False, timeout=(1, None)) as req:
                     with open(folder_file, 'wb') as f:
                         f.write(req.content)
+
+                data = [{"cmd": "Logout", "action": 0}]
+                params = {"token": token, 'cmd': "Logout"}
+                response = requests.post(url, verify=False, params=params, json=data, headers=headers)
