@@ -97,7 +97,7 @@ script:
     mode: queued
     max: 10
     fields:
-      name_fale:
+      name_file:
         description: Имя файла на камере для загрузки
         required: true
         example: video.mp4
@@ -115,13 +115,13 @@ script:
     sequence:
         - service: python_script.exec
           data: 
-            cache: false
-            name_fale: '{{name_fale}}'
+            cache: true
+            name_file: '{{name_file}}'
             local_folder: '{{local_folder}}'
             source: |
                 import requests
 
-                name_file = data["name_fale"]
+                name_file = data["name_file"]
                 local_folder = data["local_folder"]
 
                 with open('/config/secrets.yaml') as f:
