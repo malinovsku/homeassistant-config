@@ -1,0 +1,168 @@
+python_script:
+
+sensor:
+- platform: python_script
+  name: reolink_events
+  scan_interval: '00:05:00'
+  source: |
+    import requests
+    from datetime import datetime, timedelta
+
+    start = datetime.today() - timedelta(days=1)
+    stop = datetime.now()
+
+    with open('/config/secrets.yaml') as f:
+      for line in f:
+        if line.split(":")[0] == "login_reolink":
+          login_reolink = line.replace("login_reolink: ","").replace("\n","").replace(" ","")
+        if line.split(":")[0] == "pass_reolink":
+          pass_reolink = line.replace("pass_reolink: ","").replace("\n","").replace(" ","")
+        if line.split(":")[0] == "ip_reolink":
+          ip_reolink = line.replace("ip_reolink: ","").replace("\n","").replace(" ","")
+
+    url = "http://" + ip_reolink + "/cgi-bin/api.cgi"
+
+    body = [{"cmd": "Login", "action": 0, "param": {"User": {"userName": login_reolink, "password": pass_reolink}}}]
+    param = {"cmd": "Login", "token": "null"}
+    headers = {'content-type': 'application/json'}
+
+    response = requests.post(url, verify=False, params=param, json=body, headers=headers)
+
+    data = response.json()[0]
+    token = data["value"]["Token"]["name"]
+
+    start = datetime.today() - timedelta(days=1)
+    end = datetime.now()
+
+    search_params = {
+                'Search': {
+                    'channel': 0,
+                    'streamType': 'sub',
+                    'onlyStatus': 0,
+                    'StartTime': {
+                        'year': start.year,
+                        'mon': start.month,
+                        'day': start.day,
+                        'hour': start.hour,
+                        'min': start.minute,
+                        'sec': start.second
+                    },
+                    'EndTime': {
+                        'year': end.year,
+                        'mon': end.month,
+                        'day': end.day,
+                        'hour': end.hour,
+                        'min': end.minute,
+                        'sec': end.second
+                    }
+                }
+            }
+    command = [{"cmd": "Search", "action": 1, "param": search_params}]
+
+    params = {"token": token, 'cmd': command}
+    response = requests.post(url, verify=False, params=params, json=command, headers=headers)
+
+    events = response.json()[0]['value']['SearchResult']['File'][-10:]
+
+    processed_motions = []
+    replace_fields = {'mon': 'month', 'sec': 'second', 'min': 'minute'}
+    for file in events:
+        time_range = {}
+        for x in ['Start', 'End']:
+            raw = file[f'{x}Time']
+            for k, v in replace_fields.items():
+                if k in raw.keys():
+                    raw[v] = raw.pop(k)
+            time_range[x.lower()] = datetime(**raw)
+        start, end = time_range.values()
+        processed_motions.append({
+                    'start': start,
+                    'end': end,
+                    'filename': file['name']
+                })
+
+    data = [{"cmd": "Logout", "action": 0}]
+    params = {"token": token, 'cmd': "Logout"}
+    response = requests.post(url, verify=False, params=params, json=data, headers=headers)
+
+    self.state = processed_motions[9]['filename']
+    self.attributes={}
+    self.attributes['file'] = processed_motions
+
+
+
+script:
+  reolink_download_file:
+    alias: Загрузка видео с камеры Reolink
+    mode: parallel
+    max: 10
+    fields:
+      name_fale:
+        description: Имя файла на камере для загрузки
+        required: true
+        example: video.mp4
+        default: video.mp4
+        selector:
+          text: null
+      local_folder:
+        description: Локальная папка для загрузки
+        required: true
+        example: /config/downloads
+        default: /config/downloads
+        selector:
+          text: null
+
+    sequence:
+        - service: python_script.exec
+          data: 
+            cache: false
+            name_fale: '{{name_fale}}'
+            local_folder: '{{local_folder}}'
+            source: |
+                import requests
+
+                name_file = data["name_fale"]
+                local_folder = data["local_folder"]
+
+                with open('/config/secrets.yaml') as f:
+                    for line in f:
+                        if line.split(":")[0] == "login_reolink":
+                            login_reolink = line.replace("login_reolink: ","").replace("\n","").replace(" ","")
+                        if line.split(":")[0] == "pass_reolink":
+                            pass_reolink = line.replace("pass_reolink: ","").replace("\n","").replace(" ","")
+                        if line.split(":")[0] == "ip_reolink":
+                            ip_reolink = line.replace("ip_reolink: ","").replace("\n","").replace(" ","")
+
+                import requests
+                from datetime import datetime, timedelta
+
+                url = "http://" + ip_reolink + "/cgi-bin/api.cgi"
+
+                body = [{"cmd": "Login", "action": 0, "param": {"User": {"userName": login_reolink, "password": pass_reolink}}}]
+                param = {"cmd": "Login", "token": "null"}
+                headers = {'content-type': 'application/json'}
+
+                response = requests.post(url, verify=False, params=param, json=body, headers=headers)
+
+                data = response.json()[0]
+                token = data["value"]["Token"]["name"]
+
+                response = requests.post(url, verify=False, params=param, json=body, headers=headers)
+
+                folder_file = local_folder + '/' + name_file
+
+                params = {"token": token, 'cmd': 'Download'}
+
+                body = [
+                            {
+                                "cmd": "Download",
+                                "source": name_file,
+                                "output": name_file,
+                                "filepath": local_folder
+                            }
+                        ]
+
+                params.update(body[0])
+                with requests.get(url, params=params, stream=True, verify=False, timeout=(1, None)) as req:
+                    with open(folder_file, 'wb') as f:
+                        f.write(req.content)
