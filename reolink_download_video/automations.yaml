@@ -1,0 +1,32 @@
+automation:
+  - id: '1641232566736420479'
+    alias: отправить видео в тг с камеры reolink
+    description: ''
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.reolink_events
+        not_from:
+          - unavailable
+          - unknown
+    condition: []
+    action:
+      - variables:
+          name_file: '{{trigger.to_state.state}}'
+          folder_file: /config/downloads/{{name_file}}
+          local_folder: /config/downloads
+          start_time: '{{state_attr(''sensor.reolink_events'',''file'')[9][''start'']}}'
+          end_time: '{{state_attr(''sensor.reolink_events'',''file'')[9][''end'']}}'
+      - service: script.reolink_download_file
+        data:
+          name_file: '{{name_file}}'
+          local_folder: '{{local_folder}}'
+      - service: telegram_bot.send_video
+        data:
+          file: '{{folder_file}}'
+          caption: Выгрузка видео с камеры. Начало {{start_time}}, конец {{end_time}}.
+          target: 000000000000000
+      - service: delete.file
+        data:
+          file: '{{folder_file}}'
+    mode: queued
