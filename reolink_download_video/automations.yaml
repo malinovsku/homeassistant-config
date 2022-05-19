@@ -21,6 +21,9 @@ automation:
         data:
           name_file: '{{name_file}}'
           local_folder: '{{local_folder}}'
+          login_reolink: login_reolink
+          pass_reolink: pass_reolink
+          ip_reolink: ip_reolink
       - service: telegram_bot.send_video
         data:
           file: '{{folder_file}}'
