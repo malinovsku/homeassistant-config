@@ -133,9 +133,6 @@ script:
                         if line.split(":")[0] == "ip_reolink":
                             ip_reolink = line.replace("ip_reolink: ","").replace("\n","").replace(" ","")
 
-                import requests
-                from datetime import datetime, timedelta
-
                 url = "http://" + ip_reolink + "/cgi-bin/api.cgi"
 
                 body = [{"cmd": "Login", "action": 0, "param": {"User": {"userName": login_reolink, "password": pass_reolink}}}]
