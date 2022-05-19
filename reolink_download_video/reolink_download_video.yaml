@@ -29,11 +29,11 @@ sensor:
 
     with open('/config/secrets.yaml') as f:
       for line in f:
-        if line.split(":")[0] == "login_reolink":
+        if line.split(":")[0] == login_reolink:
           login_reolink = line.replace("login_reolink: ","").replace("\n","").replace(" ","")
-        if line.split(":")[0] == "pass_reolink":
+        if line.split(":")[0] == pass_reolink:
           pass_reolink = line.replace("pass_reolink: ","").replace("\n","").replace(" ","")
-        if line.split(":")[0] == "ip_reolink":
+        if line.split(":")[0] == ip_reolink:
           ip_reolink = line.replace("ip_reolink: ","").replace("\n","").replace(" ","")
 
     url = "http://" + ip_reolink + "/cgi-bin/api.cgi"
