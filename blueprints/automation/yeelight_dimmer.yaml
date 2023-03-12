@@ -1,0 +1,115 @@
+blueprint:
+  name: 📦Действия для диммера Yeelight
+  domain: automation
+  input:
+    button_device:
+      name: Сенсор диммера
+      description: Сенсор диммера
+      selector:
+        entity:
+    one_press_action:
+      name: 1 нажатие
+      description: Дейтсвие при 1 нажатии кнопки
+      default: []
+      selector:
+        action:
+    two_press_action:
+      name: 2 нажатия
+      description: Дейтсвие при 2 нажатиях кнопки
+      default: []
+      selector:
+        action:
+    three_press_action:
+      name: 3 нажатия
+      description: Дейтсвие при 3 нажатиях кнопки
+      default: []
+      selector:
+        action:
+    four_press_action:
+      name: 4 нажатия
+      description: Дейтсвие при 4 нажатиях кнопки
+      default: []
+      selector:
+        action:
+    five_press_action:
+      name: 5 нажатий
+      description: Дейтсвие при 5 нажатиях кнопки
+      default: []
+      selector:
+        action:
+    hold_press_action:
+      name: долгое нажатие
+      description: Дейтсвие при долгом нажатии кнопки
+      default: []
+      selector:
+        action:
+    dimmer_action:
+      name: кручение
+      description: кручение (count_bt)
+      default: []
+      selector:
+        action:
+    dimmer_hold_press_action:
+      name: кручение при нажатии
+      description: кручение при нажатии (count_bt)
+      default: []
+      selector:
+        action:
+mode: parallel
+max: 50
+trigger:
+  - platform: state
+    entity_id:
+      - !input button_device
+    attribute: last_packet_id
+condition: []
+action:
+  - variables:
+      type_bt: "{{trigger.to_state.attributes.last_type_of_press}}"
+      count_bt: >-
+        {%set valu = trigger.to_state.attributes.dimmer_value%}
+        {%if type_bt == "rotate left" or type_bt == "rotate left (pressed)"%}
+          {{valu * (-1)}}
+        {%else%}
+          {{valu}}
+        {%endif%}
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: '{{type_bt == "long press" and count_bt == 1}}'
+        sequence: !input hold_press_action
+      - conditions:
+          - condition: template
+            value_template: '{{type_bt == "rotate right" or type_bt == "rotate left"}}'
+        sequence: !input dimmer_action
+      - conditions:
+          - condition: template
+            value_template: '{{type_bt == "rotate right (pressed)" or type_bt == "rotate left (pressed)"}}'
+        sequence: !input dimmer_hold_press_action
+      - conditions:
+          - condition: template
+            value_template: '{{type_bt == "short press"}}'
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: '{{count_bt == 1}}'
+                sequence: !input one_press_action
+              - conditions:
+                  - condition: template
+                    value_template: '{{count_bt == 2}}'
+                sequence: !input two_press_action
+              - conditions:
+                  - condition: template
+                    value_template: '{{count_bt == 3}}'
+                sequence: !input three_press_action
+              - conditions:
+                  - condition: template
+                    value_template: '{{count_bt == 4}}'
+                sequence: !input four_press_action
+              - conditions:
+                  - condition: template
+                    value_template: '{{count_bt == 5}}'
+                sequence: !input five_press_action
+            default: []
+    default: []

@@ -1,0 +1,113 @@
+blueprint:
+  name: 📦Действия для кнопки Moes
+  domain: automation
+  input:
+    button_device:
+      name: Кнопка
+      description: Устройство кнопка 
+      selector:
+        device:
+          integration: zha
+    remote_button1_short_press:
+      name: Первая кнопка нажата
+      description: Первая кнопка нажата
+      default: []
+      selector:
+        action:
+    remote_button1_long_press:
+      name: Первая кнопка долго нажата
+      description: Первая кнопка долго нажата
+      default: []
+      selector:
+        action:
+    remote_button1_double_press:
+      name: Первая кнопка нажата два раза
+      description: Первая кнопка нажата два раза
+      default: []
+      selector:
+        action:
+    remote_button2_short_press:
+      name: Вторая кнопка нажата
+      description: Вторая кнопка нажата
+      default: []
+      selector:
+        action:
+    remote_button2_long_press:
+      name: Вторая кнопка долго нажата
+      description: Вторая кнопка долго нажата
+      default: []
+      selector:
+        action:
+    remote_button2_double_press:
+      name: Вторая кнопка нажата два раза
+      description: Вторая кнопка нажата два раза
+      default: []
+      selector:
+        action:
+mode: parallel
+max: 50
+trigger:
+  - device_id: !input button_device
+    domain: zha
+    platform: device
+    type: remote_button_short_press
+    subtype: button_1
+    id: remote_button1_short_press
+  - device_id: !input button_device
+    domain: zha
+    platform: device
+    type: remote_button_long_press
+    subtype: button_1
+    id: remote_button1_long_press
+  - device_id: !input button_device
+    domain: zha
+    platform: device
+    type: remote_button_double_press
+    subtype: button_1
+    id: remote_button1_double_press
+  - device_id: !input button_device
+    domain: zha
+    platform: device
+    type: remote_button_short_press
+    subtype: button_2
+    id: remote_button2_short_press
+  - device_id: !input button_device
+    domain: zha
+    platform: device
+    type: remote_button_long_press
+    subtype: button_2
+    id: remote_button2_long_press
+  - device_id: !input button_device
+    domain: zha
+    platform: device
+    type: remote_button_double_press
+    subtype: button_2
+    id: remote_button2_double_press
+condition: []
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: remote_button1_short_press
+        sequence: !input remote_button1_short_press
+      - conditions:
+          - condition: trigger
+            id: remote_button1_long_press
+        sequence: !input remote_button1_long_press
+      - conditions:
+          - condition: trigger
+            id: remote_button1_double_press
+        sequence: !input remote_button1_double_press
+      - conditions:
+          - condition: trigger
+            id: remote_button2_short_press
+        sequence: !input remote_button2_short_press
+      - conditions:
+          - condition: trigger
+            id: remote_button2_long_press
+        sequence: !input remote_button2_long_press
+      - conditions:
+          - condition: trigger
+            id: remote_button2_double_press
+        sequence: !input remote_button2_double_press
+    default: []

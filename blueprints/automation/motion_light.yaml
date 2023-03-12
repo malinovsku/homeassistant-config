@@ -1,0 +1,208 @@
+blueprint:
+  name: 📦Свет по движению
+  domain: automation
+  input:
+    in_motion:
+      name: Датчик движения
+      description: Датчик движения
+      selector:
+        entity:
+          device_class: motion
+    in_light:
+      name: Лампа
+      description: Лампа
+      selector:
+        entity:
+          domain: light
+    in_time_min:
+      name: Время минимального ожидания
+      description: Время минимального ожидания
+      default: 00:01:00
+      selector:
+        time:
+    in_time_max:
+      name: Время максимального ожидания
+      description: Время максимального ожидания
+      default: 00:05:00
+      selector:
+        time:
+    in_time_ojd:
+      name: Время ожидания минимального таймера
+      description: Время ожидания минимального таймера и дополнительно время не движения и если включена
+      default: 00:10:00
+      selector:
+        time:
+    in_night:
+      name: Признак для включения ночным режимом
+      description: Признак для включения ночным режимом
+      selector:
+        entity:
+    in_night_brightness:
+      name: Яркость для ночного режима
+      description: Яркость для ночного режима
+      default: 40
+      selector:
+        number:
+          min: 0
+          max: 100
+    in_action_in:
+      name: Дейсвие перед включением
+      description: Дейсвие перед включением
+      default: []
+      selector:
+        action:
+    in_action_out:
+      name: Дейсвие перед выключение
+      description: Дейсвие перед выключение
+      default: []
+      selector:
+        action:
+    in_condition:
+      name: Условия запуска автоматизации
+      description: Условия запуска автоматизации
+      default: []
+      selector:
+        action:
+
+
+trigger:
+  - platform: state
+    id: trig_on
+    entity_id:
+      - !input in_motion
+    to: 'on'
+
+
+  - platform: homeassistant
+    event: start
+  # - platform: state
+  #   id: trig_on
+  #   entity_id:
+  #     - !input in_motion
+  #   to: 'on'
+  #   for:
+  #     hours: 0
+  #     minutes: 1
+  #     seconds: 0
+  - platform: state
+    id: motion_time_off
+    entity_id:
+      - !input in_motion
+    to: 'off'
+    for: !input in_time_ojd
+
+
+
+  - platform: state
+    id: trig_on
+    entity_id:
+      - !input in_light
+    to: 'on'
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 0
+condition: 
+
+
+  - condition: and
+    conditions:
+      !input in_condition
+
+  - condition: or
+    conditions:
+      - condition: and
+        conditions:
+          - condition: trigger
+            id: motion_time_off
+          - condition: state
+            entity_id: !input in_light
+            state: "off"
+      - condition: not
+        conditions:
+          - condition: trigger
+            id: motion_time_off
+
+
+
+action:
+  - variables:
+      light_id: !input in_light
+  - if:
+      - or:
+          - condition: state
+            entity_id: !input in_motion
+            state: 'on'
+          - condition: trigger
+            id: trig_on
+    then:
+      - variables:
+          max: >-
+            {%-if as_timestamp(now()) - as_timestamp(states[light_id].last_changed)|float<120 and states(light_id)=='off'-%}
+            1
+            {%-else-%}
+            0
+            {%-endif-%}
+      - choose:
+          - conditions: []
+            sequence: !input in_action_in
+      - if:
+          - condition: state
+            entity_id: !input in_night
+            state: 'on'
+        then:
+          - service: light.turn_on
+            data:
+              brightness_pct: !input in_night_brightness
+            target:
+              entity_id: !input in_light
+        else:
+          - service: light.turn_on
+            data:
+              brightness_pct: 100
+            target:
+              entity_id: !input in_light
+      - if:
+          - condition: template
+            value_template: '{{max==0}}'
+        then:
+          - wait_for_trigger:
+              - platform: state
+                entity_id:
+                  - !input in_motion
+                to: 'off'
+                for: !input in_time_min
+              - platform: state
+                entity_id:
+                  - !input in_light
+                to: 'off'
+            timeout: !input in_time_ojd
+          - if:
+              - condition: state
+                entity_id: !input in_light
+                state: 'off'
+            then:
+              - stop: лампа выключена
+      - if:
+          - condition: state
+            entity_id: !input in_motion
+            state: 'on'
+        then:
+          - wait_for_trigger:
+              - platform: state
+                entity_id:
+                  - !input in_motion
+                to: 'off'
+                for: !input in_time_max
+            continue_on_timeout: false
+      - choose:
+          - conditions: []
+            sequence: !input in_action_out
+  - service: light.turn_off
+    data: {}
+    target:
+      entity_id: !input in_light
+mode: single
+trace:
+  stored_traces: 30
+max_exceeded: silent

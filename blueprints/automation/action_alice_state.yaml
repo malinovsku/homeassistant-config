@@ -1,0 +1,24 @@
+blueprint:
+  name: 📦Действие при команде Алисе
+  description: Действия при команде Алисе
+  domain: automation
+  input:
+    in_text:
+      name: Команда Алисе
+      description: Команда Алисе
+      selector:
+        text:
+    in_action:
+      name: Дейтсвие
+      description: Дейтсвие
+      default: []
+      selector:
+        action:
+trigger:
+  - platform: event
+    event_type: yandex_intent
+    event_data:
+      text: !input in_text
+condition: []
+action: !input in_action
+mode: restart

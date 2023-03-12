@@ -1,0 +1,112 @@
+blueprint:
+  name: 📦Шторы в полоску когда потемнело или закрыть при лампе
+  domain: automation
+  input:
+    target_cover:
+      name: Шторы
+      description: Шторы
+      selector:
+        target:
+          entity:
+            domain: cover
+    entity_button:
+      name: Кнопки для закрытия в полоску
+      description: Кнопки для закрытия в полоску
+      selector:
+        target:
+          entity:
+            domain: button
+    entity_light:
+      name: Лампа
+      description: Лампа в комнате для определения в полоску или закрыть
+      selector:
+        entity:
+          domain: light
+    light_on_off:
+      name: Закрыть или в полоску при лампе
+      description: Закрыть или в полоску при лампе
+      default: true
+      selector:
+        boolean:
+    prinud_close:
+      name: Принудительно закрывать если включен признак
+      description: Игнорировать свет и Принудительно закрывать если включен признак
+      selector:
+        entity:
+          domain: input_boolean
+    shtory_zakrit:
+      name: Освещенность для закрытия штор
+      description: Освещенность для закрытия штор
+      default: 40
+      selector:
+        number:
+          min: 5
+          max: 80
+          unit_of_measurement: lx
+          mode: slider
+#max_exceeded: silent
+variables:
+  light_on_off: !input light_on_off
+  entity_button_new: !input entity_button
+  all_cover: "cover.{{entity_button_new.entity_id[0].split('.')[1].split('_')[0]}}_blind_all"
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.ulica_illuminance2
+    for: '00:00:30'
+    below: !input shtory_zakrit
+  - platform: homeassistant
+    event: start
+  - platform: event
+    event_type: automation_reloaded
+  - platform: state
+    entity_id: !input entity_light
+    id: lampa
+    to: ~
+condition: 
+  # - condition: numeric_state
+  #   entity_id: sensor.ulica_illuminance2
+  #   below: !input shtory_zakrit
+
+
+  - condition: or
+    conditions:
+      # - condition: numeric_state
+      #   entity_id: cover.{{entity_button}}_blind_all
+      #   attribute: current_position
+      #   below: '30'target_cover
+      - condition: numeric_state
+        entity_id: sensor.ulica_illuminance2
+        below: !input shtory_zakrit
+
+
+      - condition: template
+        value_template: "{{state_attr(all_cover,'current_position') < 20 }}"
+
+
+
+action:
+  - choose:
+      - conditions:
+          - condition: or
+            conditions:
+              - condition: state
+                entity_id: !input entity_light
+                state: 'on'
+              - condition: state
+                entity_id: !input prinud_close
+                state: 'on'
+              - condition: template
+                value_template: '{{ light_on_off == False }}'
+        sequence:
+          - service: cover.close_cover
+            target: !input target_cover
+    default:
+      - service: button.press
+        target: !input entity_button
+  - delay:
+      hours: 0
+      minutes: 0
+      seconds: 4
+      milliseconds: 0
+mode: queued
+max: 20

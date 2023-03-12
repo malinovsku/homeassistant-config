@@ -1,0 +1,113 @@
+blueprint:
+  name: 📦Действия для кнопки Xiaomi
+  domain: automation
+  input:
+    button_device:
+      name: Кнопка
+      description: Устройство кнопка Xiaomi
+      selector:
+        device:
+          integration: zha
+    one_press_action:
+      name: 1 нажатие
+      description: Дейтсвие при 1 нажатии кнопки
+      default: []
+      selector:
+        action:
+    two_press_action:
+      name: 2 нажатия
+      description: Дейтсвие при 2 нажатиях кнопки
+      default: []
+      selector:
+        action:
+    three_press_action:
+      name: 3 нажатия
+      description: Дейтсвие при 3 нажатиях кнопки
+      default: []
+      selector:
+        action:
+    four_press_action:
+      name: 4 нажатия
+      description: Дейтсвие при 4 нажатиях кнопки
+      default: []
+      selector:
+        action:
+    five_press_action:
+      name: 5 нажатий
+      description: Дейтсвие при 5 нажатиях кнопки
+      default: []
+      selector:
+        action:
+    hold_press_action:
+      name: долгое нажатие
+      description: Дейтсвие при долгом нажатии кнопки
+      default: []
+      selector:
+        action:
+mode: parallel
+max: 50
+trigger:
+  - device_id: !input button_device
+    domain: zha
+    platform: device
+    type: remote_button_short_press
+    subtype: remote_button_short_press
+    id: one_press_trigger
+  - device_id: !input button_device
+    domain: zha
+    platform: device
+    type: remote_button_double_press
+    subtype: remote_button_double_press
+    id: two_press_trigger
+  - device_id: !input button_device
+    domain: zha
+    platform: device
+    type: remote_button_triple_press
+    subtype: remote_button_triple_press
+    id: three_press_trigger
+  - device_id: !input button_device
+    domain: zha
+    platform: device
+    type: remote_button_quadruple_press
+    subtype: remote_button_quadruple_press
+    id: four_press_trigger
+  - device_id: !input button_device
+    domain: zha
+    platform: device
+    type: remote_button_quintuple_press
+    subtype: remote_button_quintuple_press
+    id: five_press_trigger
+  - device_id: !input button_device
+    domain: zha
+    platform: device
+    type: remote_button_long_press
+    subtype: button
+    id: hold_press_trigger
+condition: []
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: one_press_trigger
+        sequence: !input one_press_action
+      - conditions:
+          - condition: trigger
+            id: two_press_trigger
+        sequence: !input two_press_action
+      - conditions:
+          - condition: trigger
+            id: three_press_trigger
+        sequence: !input three_press_action
+      - conditions:
+          - condition: trigger
+            id: four_press_trigger
+        sequence: !input four_press_action
+      - conditions:
+          - condition: trigger
+            id: five_press_trigger
+        sequence: !input five_press_action
+      - conditions:
+          - condition: trigger
+            id: hold_press_trigger
+        sequence: !input hold_press_action
+    default: []
