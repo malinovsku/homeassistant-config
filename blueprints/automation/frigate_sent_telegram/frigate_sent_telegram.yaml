@@ -1,10 +1,10 @@
 blueprint:
-  name: 📸Отправка в телеграм скринов событий Frigate и действия по клавиатуре сообщения
+  name: 📸Отправка в Telegram скринов событий Frigate и действия по клавиатуре сообщения
   domain: automation
   description: |
     #### В сообщении доступны кнопки:
     - 📲 Отправить стрим на мобильное приложение.
-    - ❌ Удалить событие Frigate и сообщение в telegram.
+    - ❌ Удалить событие Frigate и сообщение в Telegram.
     - 📼 Заменить фото на видео.
     - 🔚 Заменить видео на фото.
     - 🔄 Обновление текущего сообщения, если не срабатывает возврат.
@@ -36,13 +36,15 @@ blueprint:
         template:
     in_type_photo:
       name: Тип картинки для отправки
-      description: Доступны thumbnail - миниатюра объекта, snapshot - полный скриншот кадра.
+      description: Тип картинки для отправки
       default: thumbnail
       selector:
         select:
           options:
-            - thumbnail
-            - snapshot
+            - label: Миниатюра объекта (thumbnail)
+              value: thumbnail
+            - label: Полный скриншот кадра (snapshot)
+              value: snapshot
     in_url_frigate:
       name: Адрес Frigate
       description: Адрес Frigate, начиная с **http://...**
@@ -50,7 +52,7 @@ blueprint:
       selector:
         text:
     in_time_wait:
-      name: (Доп) Время после которого видео заменяется обратно на фото
+      name: Время после которого видео заменяется обратно на фото
       description: Время после которого видео заменяется обратно на фото.
       default: 00:01:00
       selector:
@@ -146,9 +148,6 @@ action:
                       - "{{not in_object_event|length or in_object_event|select('in', label)|list|length > 0}}"
                       - "{{not in_zones|length or in_zones|select('in', entered_zones)|list|length > 0}}"
             then:
-              # - service: notify.{{event_notify}}
-              #   data:
-              #     message: "*ПРОПУЩЕННО!!!*{{'\n'}}{{mes_caption}}"
               - stop: Объект или зона не совпадают
 
           - parallel:
@@ -285,7 +284,7 @@ action:
 
               - conditions:
                   - condition: template
-                    value_template: "{{command_tg=='reload'}}"
+                    value_template: "{{command_tg=='reload' and this.attributes.current|int(0) < 1}}"
                 sequence:
                   - service: telegram_bot.edit_replymarkup
                     data:
@@ -293,6 +292,17 @@ action:
                       chat_id: "{{chat_id}}"
                       inline_keyboard: >-
                         📲:/frigate_{{camera}} {{video_id}} live, ❌:/frigate_{{camera}} {{video_id}} delete, 📼:/frigate_{{camera}} {{video_id}} clip
+                  - service: telegram_bot.answer_callback_query
+                    data:
+                      show_alert: true
+                      message: Клавиатура обновлена
+                      callback_query_id: "{{button_id}}"
+
+              - conditions:
+                  - condition: template
+                    value_template: "{{command_tg=='reload'}}"
+                sequence:
+                  - stop: останавливаем для исключения ошибок в answer_callback, ошибочного нажатия на ⏳ reload
 
               - conditions:
                   - condition: template
@@ -349,5 +359,5 @@ action:
               - service: telegram_bot.answer_callback_query
                 data:
                   show_alert: true
-                  message: 🤔Если увидите это сообщение, то кажется что то пошло не так. Обновите 🔄 сообщение.
+                  message: 🤔Если увидите это сообщение, то кажется что то пошло не так при нажатии на {{command_tg}}. Обновите 🔄 сообщение.
                   callback_query_id: "{{button_id}}"
