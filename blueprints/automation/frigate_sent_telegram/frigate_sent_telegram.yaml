@@ -2,7 +2,7 @@ blueprint:
   name: 📸Отправка в телеграм скринов событий Frigate и действия по клавиатуре сообщения
   domain: automation
   description: |
-    #### В сообщении доступны конопки:
+    #### В сообщении доступны кнопки:
     - 📲 Отправить стрим на мобильное приложение.
     - ❌ Удалить событие Frigate и сообщение в telegram.
     - 📼 Заменить фото на видео.
@@ -285,8 +285,25 @@ action:
 
               - conditions:
                   - condition: template
+                    value_template: "{{command_tg=='reload'}}"
+                sequence:
+                  - service: telegram_bot.edit_replymarkup
+                    data:
+                      message_id: "{{message_id}}"
+                      chat_id: "{{chat_id}}"
+                      inline_keyboard: >-
+                        📲:/frigate_{{camera}} {{video_id}} live, ❌:/frigate_{{camera}} {{video_id}} delete, 📼:/frigate_{{camera}} {{video_id}} clip
+
+              - conditions:
+                  - condition: template
                     value_template: "{{command_tg=='clip'}}"
                 sequence:
+                  - service: telegram_bot.edit_replymarkup
+                    data:
+                      message_id: "{{message_id}}"
+                      chat_id: "{{chat_id}}"
+                      inline_keyboard: >-
+                        ⏳Выполняется загрузка видео⏳:/frigate_{{camera}} {{video_id}} reload
                   - service: python_script.exec
                     data:
                       cache: true
