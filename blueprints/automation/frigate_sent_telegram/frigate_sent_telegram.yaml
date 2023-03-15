@@ -34,10 +34,19 @@ blueprint:
       default: "📸*Движение* {{camera_friendly_name}}{{'\n'-}}⏱{{start_time}} по {{end_time}}{{'\n'-}}🎯{{offset_zones}}"
       selector:
         template:
+    in_type_photo:
+      name: Тип картинки для отправки
+      description: Доступны thumbnail - миниатюра объекта, snapshot - полный скриншот кадра.
+      default: thumbnail
+      selector:
+        select:
+          options:
+            - thumbnail
+            - snapshot
     in_url_frigate:
       name: Адрес Frigate
       description: Адрес Frigate, начиная с **http://...**
-      default: http://localhost:8123
+      default: http://ccab4aaf-frigate:5000
       selector:
         text:
     in_time_wait:
@@ -81,6 +90,7 @@ max: 1000
 variables:
   in_url_frigate: !input in_url_frigate
   in_notify: !input in_notify
+  in_type_photo: !input in_type_photo
   event_notify: "{{in_notify.replace('notify.', '')}}"
   in_notify_mobile: !input in_notify_mobile
   notify_mobile: "{{in_notify_mobile.replace('notify.', '')}}"
@@ -88,7 +98,7 @@ variables:
   camera_friendly_name: "{{state_attr(in_camera, 'friendly_name').replace('-', ' ')}}"
   in_zones: !input in_zones
   in_object_event: !input in_object_event
-  frigate_api: "{{in_url_frigate}}/api/frigate/notifications"
+  frigate_api: "{{in_url_frigate}}/api/events"
 
 trigger_variables:
   in_camera: !input in_camera
@@ -128,7 +138,7 @@ action:
               msg_tag: "mot-cam-{{video_id}}"
               in_text_message: !input in_text_message
               mes_caption: "📸{{in_text_message}}"
-              url_thumb: "{{frigate_api}}/{{video_id}}/thumbnail.jpg"
+              url_thumb: "{{frigate_api}}/{{video_id}}/{{in_type_photo}}.jpg"
 
           - if:
               - not:
@@ -251,6 +261,7 @@ action:
                       show_alert: false
                       message: Удалено {{mes_caption}}
                       callback_query_id: "{{button_id}}"
+
               - conditions:
                   - condition: template
                     value_template: "{{command_tg=='live'}}"
@@ -271,12 +282,14 @@ action:
                       show_alert: false
                       message: Отправлен стрим
                       callback_query_id: "{{button_id}}"
+
               - conditions:
                   - condition: template
                     value_template: "{{command_tg=='clip'}}"
                 sequence:
-                  - service: script.edit_media_telegram
+                  - service: python_script.exec
                     data:
+                      cache: true
                       new_file: "{{frigate_api}}/{{video_id}}/clip.mp4"
                       message_id: "{{message_id}}"
                       new_message: "{{mes_caption.replace('📸','🎥')}}"
@@ -284,6 +297,7 @@ action:
                       button_id: "{{button_id}}"
                       keyboard: >-
                           🔄:/frigate_{{camera}} {{video_id}} clip, 🔚:/frigate_{{camera}} {{video_id}} thumb
+                      file: /config/python_scripts/edit_media_telegram.py
                   - wait_for_trigger:
                       - platform: event
                         event_type: telegram_callback
@@ -297,15 +311,18 @@ action:
                         {%-else-%}
                           {{-wait.trigger.event.data.id-}}
                         {%-endif-%}
-                  - service: script.edit_media_telegram
+                  - service: python_script.exec
                     data:
-                      new_file: "{{frigate_api}}/{{video_id}}/thumbnail.jpg"
+                      cache: true
+                      new_file: "{{frigate_api}}/{{video_id}}/{{in_type_photo}}.jpg"
                       message_id: "{{message_id}}"
                       new_message: "{{mes_caption.replace('🎥','📸')}}"
                       chat_id: "{{chat_id}}"
                       button_id: "{{button_id}}"
                       keyboard: >-
                         📲:/frigate_{{camera}} {{video_id}} live, ❌:/frigate_{{camera}} {{video_id}} delete, 📼:/frigate_{{camera}} {{video_id}} clip
+                      file: /config/python_scripts/edit_media_telegram.py
+
             default:
               - delay:
                   hours: 0

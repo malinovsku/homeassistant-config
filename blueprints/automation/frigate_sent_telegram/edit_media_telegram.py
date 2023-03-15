@@ -17,9 +17,12 @@ try:
 
         if new_file.startswith("http"):
                 req = requests.get(new_file)
+                if not req.ok:
+                        raise Exception(f'Ошибка! Не найден файл по url: {new_file}')
                 media = io.BytesIO(req.content)
         else:
                 media = open(new_file, 'rb')
+        media.seek(0)
 
         size_file = media.getbuffer().nbytes / (1024*1024)
         if int(size_file) >= 50:
@@ -61,7 +64,7 @@ except Exception as e:
         logger.error(mes_alarm)
 
 hass.services.call('logbook', 'log', {
-                "name": "Замена медиа в TG. ",
+                "name": "Замена медиа в telegram. ",
                 "message": f"Результат: {mes_alarm}",
                 "entity_id": "script.edit_media_telegram"})
 
