@@ -66,7 +66,7 @@ blueprint:
             - label: Home Assistant API
               value: api/frigate/notifications
     in_time_wait:
-      name: Время после которого видео заменяется обратно на фото
+      name: Время ожидания возврата фото
       description: Время после которого видео заменяется обратно на фото.
       default: 00:01:00
       selector:
@@ -85,13 +85,19 @@ blueprint:
         object:
     in_condition:
       name: (Доп) Условия для отправки
-      description: Тип дейтсвия выбрать условие. Проверяется при событии с mqtt frigate.
+      description: |
+        **Тип дейтсвия выбрать условие!**
+        Условие проверяется перед отправкой сообщения в Telegram.
+        Для дополнительных дейтсвий ниже эта проверка не работает.
       default: []
       selector:
         action:
     in_action:
       name: (Доп) Дополнительные действия
-      description: Дополнительные действия параллельно отправке уведомления, доступны переменные camera, camera_friendly_name, start_time, end_time, offset_zones, object, url_thumb, mes_caption
+      description: |
+        Дополнительные действия параллельно отправке уведомления. 
+        **Запускается без исключения при новых (new) событиях Frigate.**
+        Доступны переменные: camera, camera_friendly_name, start_time, end_time, offset_zones, object, url_thumb, mes_caption, video_id
       default: []
       selector:
         action:
@@ -142,7 +148,6 @@ action:
           - condition: trigger
             id: frigate-event
         sequence:
-          - condition: !input in_condition
           - variables:
               video_id: "{{trigger.payload_json['after']['id']}}"
               camera: "{{trigger.payload_json['after']['camera']}}"
@@ -159,71 +164,72 @@ action:
               inline_keyboard_error: "❌Событие не закрыто:/frigate_{{camera}} {{video_id}} delete"
               inline_keyboard_new: "❌:/frigate_{{camera}} {{video_id}} delete, 📲:/frigate_{{camera}} {{video_id}} live"
               inline_keyboard_end: "📲:/frigate_{{camera}} {{video_id}} live, ❌:/frigate_{{camera}} {{video_id}} delete, 📼:/frigate_{{camera}} {{video_id}} clip"
-          - if:
-              - not:
-                  - and:
-                      - "{{not in_object_event|length or in_object_event|select('in', label)|list|length > 0}}"
-                      - "{{not in_zones|length or in_zones|select('in', entered_zones)|list|length > 0}}"
-            then:
-              - stop: Объект или зона не совпадают
           - parallel:
-              - service: notify.{{event_notify}}
-                data:
-                  message: "{{mes_caption}}"
-                  data:
-                    photo:
-                    - url: "{{url_thumb}}"
-                      caption: "{{mes_caption[:1024]}}"
-                    inline_keyboard: "{{inline_keyboard_new}}"
-                    message_tag: "{{msg_tag}}"
-              - sequence:
-                  - wait_for_trigger:
-                      - platform: event
-                        event_type: telegram_sent
-                        event_data:
-                          message_tag: "{{msg_tag}}"
-                    timeout: "00:00:30"
-                  - if:
-                      - condition: template
-                        value_template: "{{not wait.trigger}}"
-                    then:
-                      - stop: небыло события telegram_sent после отправки
-                  - variables:
-                      message_id: "{{wait.trigger.event.data.message_id}}"
-                      chat_id: "{{wait.trigger.event.data.chat_id }}"
-                  - wait_for_trigger:
-                      - platform: mqtt
-                        topic: frigate/events
-                        payload: "{{video_id}}/end"
-                        value_template: "{{value_json['after']['id']}}/{{ value_json['type']}}"
-                    timeout: "00:45:00"
-                  - if:
-                      - condition: template
-                        value_template: "{{not wait.trigger}}"
-                    then:
-                      - service: telegram_bot.edit_caption
+              - sequence: !input in_action
+              - if:
+                  - not:
+                      - and:
+                          - "{{not in_object_event|length or in_object_event|select('in', label)|list|length > 0}}"
+                          - "{{not in_zones|length or in_zones|select('in', entered_zones)|list|length > 0}}"
+                then:
+                  - stop: Объект или зона не совпадают
+                else:
+                  - condition: !input in_condition
+                  - parallel:
+                      - service: notify.{{event_notify}}
                         data:
-                          message_id: "{{message_id}}"
-                          chat_id: "{{chat_id}}"
-                          caption: "{{mes_caption}}"
-                          inline_keyboard: "{{inline_keyboard_error}}"
-                      - stop: истекло время для события
-                  - variables:
-                            end_time: "{{wait.trigger.payload_json['after']['end_time']|timestamp_custom('%H:%M:%S', default='00:00:00')}}"
-                            entered_zones: "{{trigger.payload_json['after']['entered_zones']}}"
-                            current_zones: "{{wait.trigger.payload_json['after']['current_zones']}}"
-                            offset_zones: "{{entered_zones|list|join(', ')}} => {{current_zones|list|join(', ')}}"
-                            in_text_message: !input in_text_message
-                            mes_caption: "📸{{in_text_message}}"
-                  - service: telegram_bot.edit_caption
-                    data:
-                            message_id: "{{message_id}}"
-                            chat_id: "{{chat_id}}"
-                            caption: "{{mes_caption[:1024]}}"
-                            inline_keyboard: "{{inline_keyboard_end}}"
-              - choose:
-                  - conditions: []
-                    sequence: !input in_action
+                          message: "{{mes_caption}}"
+                          data:
+                            photo:
+                            - url: "{{url_thumb}}"
+                              caption: "{{mes_caption[:1024]}}"
+                            inline_keyboard: "{{inline_keyboard_new}}"
+                            message_tag: "{{msg_tag}}"
+                      - sequence:
+                          - wait_for_trigger:
+                              - platform: event
+                                event_type: telegram_sent
+                                event_data:
+                                  message_tag: "{{msg_tag}}"
+                            timeout: "00:00:30"
+                          - if:
+                              - condition: template
+                                value_template: "{{not wait.trigger}}"
+                            then:
+                              - stop: небыло события telegram_sent после отправки
+                          - variables:
+                              message_id: "{{wait.trigger.event.data.message_id}}"
+                              chat_id: "{{wait.trigger.event.data.chat_id }}"
+                          - wait_for_trigger:
+                              - platform: mqtt
+                                topic: frigate/events
+                                payload: "{{video_id}}/end"
+                                value_template: "{{value_json['after']['id']}}/{{ value_json['type']}}"
+                            timeout: "00:45:00"
+                          - if:
+                              - condition: template
+                                value_template: "{{not wait.trigger}}"
+                            then:
+                              - service: telegram_bot.edit_caption
+                                data:
+                                  message_id: "{{message_id}}"
+                                  chat_id: "{{chat_id}}"
+                                  caption: "{{mes_caption}}"
+                                  inline_keyboard: "{{inline_keyboard_error}}"
+                              - stop: истекло время для события
+                          - variables:
+                                    end_time: "{{wait.trigger.payload_json['after']['end_time']|timestamp_custom('%H:%M:%S', default='00:00:00')}}"
+                                    entered_zones: "{{trigger.payload_json['after']['entered_zones']}}"
+                                    current_zones: "{{wait.trigger.payload_json['after']['current_zones']}}"
+                                    offset_zones: "{{entered_zones|list|join(', ')}} => {{current_zones|list|join(', ')}}"
+                                    in_text_message: !input in_text_message
+                                    mes_caption: "📸{{in_text_message}}"
+                          - service: telegram_bot.edit_caption
+                            data:
+                                    message_id: "{{message_id}}"
+                                    chat_id: "{{chat_id}}"
+                                    caption: "{{mes_caption[:1024]}}"
+                                    inline_keyboard: "{{inline_keyboard_end}}"
 
       - alias: "Обработка нажатий на кнопки в ТГ"
         conditions:
