@@ -1,0 +1,163 @@
+blueprint:
+  name: 📢Громкость и пауза Ястанции когда говорит и слушает Алиса
+  domain: automation
+  description: |
+    Зпускается при смене атрибута станции alice_state на LISTENING или при условии ниже на SPEAKING.
+    Дополнительно триггер для срабатывания - событие station_volume, с параметрами station и gromkost = max или min.
+    **Пример события:**
+      ```yaml
+      event: station_volume
+      event_data:
+        station: media_player.yandex_station
+        gromkost: max
+      ```
+  input:
+    in_station:
+      name: Колонка
+      description: Колонка
+      selector:
+        entity:
+          domain: media_player
+          integration: yandex_station
+    in_all_station:
+      name: Группа станций
+      description: Группа станций для события station_volume, при котором срабатывает активация вместо SPEAKING.
+      default: media_player.yandex_station_vse
+      selector:
+        entity:
+          domain: media_player
+    in_level_voice_entity:
+      name: Объект для громкости
+      description: Объект для громкости
+      selector:
+        entity:
+          domain: input_number
+    in_speaking_condition:
+      name: Запускать при событии SPEAKING
+      description: Запускать при событии SPEAKING.
+      default: false
+      selector:
+        boolean:
+    in_pause_play:
+      name: Дополнительно ставить на паузу
+      description: Дополнительно ставить на паузу
+      default: false
+      selector:
+        boolean:
+    in_condition:
+      name: (Доп) Условия для запуска
+      description: Условия для запуска.
+      default: []
+      selector:
+        action:
+
+trace:
+  stored_traces: 100
+
+mode: parallel
+
+max: 100
+
+variables:
+  in_station: !input in_station
+  in_level_voice_entity: !input in_level_voice_entity
+  in_pause_play: !input in_pause_play
+  in_speaking_condition: !input in_speaking_condition
+  level_voice: "{{states(in_level_voice_entity)|float(0.0)}}"
+  old_level_voice: "{{state_attr(in_station, 'volume_level')}}"
+  states_station: "{{states(in_station)}}"
+
+trigger_variables:
+  in_station: !input in_station
+
+trigger:
+  - platform: state
+    entity_id: !input in_station
+    attribute: alice_state
+    to: LISTENING
+    variables:
+      gromkost: max
+  - platform: event
+    event_type: station_volume
+    event_data:
+      station: "{{in_station}}"
+    variables:
+      gromkost: "{{trigger.event.data.gromkost}}"
+  - platform: event
+    event_type: station_volume
+    event_data:
+      station: !input in_all_station
+    variables:
+      gromkost: "{{trigger.event.data.gromkost}}"
+  - platform: state
+    entity_id: !input in_station
+    attribute: alice_state
+    to: SPEAKING
+    id: SPEAKING
+
+condition: 
+  - condition: or
+    conditions:
+      - condition: not
+        conditions:
+          - condition: trigger
+            id: SPEAKING
+      - condition: and
+        conditions:
+          - condition: trigger
+            id: SPEAKING
+          - condition: template
+            value_template: "{{in_speaking_condition}}"
+
+action:
+  - condition: !input in_condition
+  - variables:
+      new_volume_level: "{{(gromkost == 'max') | iif(level_voice, 0.0)}}"
+  - condition: template
+    value_template: "{{old_level_voice != level_voice}}"
+  - condition: template
+    value_template: "{{state_attr(in_station, 'is_volume_muted') == false}}"
+  - if:
+      - condition: template
+        value_template: "{{in_pause_play and states_station == 'playing'}}"
+    then:
+      - service: media_player.media_pause
+        data: {}
+        target:
+          entity_id: !input in_station
+  - service: media_player.volume_set
+    target:
+      entity_id: "{{in_station}}"
+    data:
+      volume_level: "{{new_volume_level}}"
+  - wait_for_trigger:
+      - platform: state
+        entity_id: !input in_station
+        attribute: alice_state
+        to: IDLE
+        for:
+          hours: 0
+          minutes: 0
+          seconds: 2
+    timeout: '00:10:00'
+  - variables:
+      volume_level: >-
+        {%- if state_attr(in_station, 'volume_level')|float(0.0) !=
+        new_volume_level -%}
+          {{- (old_level_voice + state_attr(in_station, 'volume_level')|float(0.0) - new_volume_level)|round(1,default=20) -}}
+        {%- else -%}
+          {{- old_level_voice -}}
+        {%- endif -%}  
+  - service: media_player.volume_set
+    target:
+      entity_id: "{{in_station}}"
+    data:
+      volume_level: "{{volume_level}}"
+  - if:
+      - condition: template
+        value_template: "{{in_pause_play and states_station == 'playing'}}"
+    then:
+      - service: media_player.media_play
+        target:
+              entity_id: !input in_station
+        data: {}

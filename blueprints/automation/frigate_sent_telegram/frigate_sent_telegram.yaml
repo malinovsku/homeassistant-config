@@ -7,7 +7,6 @@ blueprint:
     - ❌ Удалить событие Frigate и сообщение в Telegram.
     - 📼 Заменить фото на видео.
     - 🔚 Заменить видео на фото.
-    - 🔄 Обновление текущего сообщения, если не срабатывает возврат.
   input:
     in_camera:
       name: Камера
@@ -47,10 +46,25 @@ blueprint:
               value: snapshot
     in_url_frigate:
       name: Адрес Frigate
-      description: Адрес Frigate, начиная с **http://...**
+      description: |
+        Адрес Frigate, начиная с **http://...**
+        Примеры:
+        - Frigate http://ccab4aaf-frigate:5000
+        - Home Assistant http://localhost:8123
       default: http://ccab4aaf-frigate:5000
       selector:
         text:
+    in_type_api:
+      name: Запрос к Frigate через какой API
+      description: В зависимости от указанного адреса Frigate или Home Assistant
+      default: api/events
+      selector:
+        select:
+          options:
+            - label: Frigate API
+              value: api/events
+            - label: Home Assistant API
+              value: api/frigate/notifications
     in_time_wait:
       name: Время после которого видео заменяется обратно на фото
       description: Время после которого видео заменяется обратно на фото.
@@ -92,6 +106,7 @@ max: 1000
 variables:
   in_url_frigate: !input in_url_frigate
   in_notify: !input in_notify
+  in_type_api: !input in_type_api
   in_type_photo: !input in_type_photo
   event_notify: "{{in_notify.replace('notify.', '')}}"
   in_notify_mobile: !input in_notify_mobile
@@ -100,7 +115,7 @@ variables:
   camera_friendly_name: "{{state_attr(in_camera, 'friendly_name').replace('-', ' ')}}"
   in_zones: !input in_zones
   in_object_event: !input in_object_event
-  frigate_api: "{{in_url_frigate}}/api/events"
+  frigate_api: "{{in_url_frigate}}/{{in_type_api}}"
 
 trigger_variables:
   in_camera: !input in_camera
@@ -110,7 +125,7 @@ trigger:
   - platform: mqtt
     topic: frigate/events
     payload: "{{camera}}/new"
-    value_template: "{{ value_json['after']['camera'] | lower | replace('-','_') }}/{{ value_json['type']}}"
+    value_template: "{{value_json['after']['camera']|lower|replace('-','_')}}/{{ value_json['type']}}"
     id: frigate-event
   - platform: event
     event_type: telegram_callback
@@ -141,7 +156,9 @@ action:
               in_text_message: !input in_text_message
               mes_caption: "📸{{in_text_message}}"
               url_thumb: "{{frigate_api}}/{{video_id}}/{{in_type_photo}}.jpg"
-
+              inline_keyboard_error: "❌Событие не закрыто:/frigate_{{camera}} {{video_id}} delete"
+              inline_keyboard_new: "❌:/frigate_{{camera}} {{video_id}} delete, 📲:/frigate_{{camera}} {{video_id}} live"
+              inline_keyboard_end: "📲:/frigate_{{camera}} {{video_id}} live, ❌:/frigate_{{camera}} {{video_id}} delete, 📼:/frigate_{{camera}} {{video_id}} clip"
           - if:
               - not:
                   - and:
@@ -149,7 +166,6 @@ action:
                       - "{{not in_zones|length or in_zones|select('in', entered_zones)|list|length > 0}}"
             then:
               - stop: Объект или зона не совпадают
-
           - parallel:
               - service: notify.{{event_notify}}
                 data:
@@ -158,11 +174,9 @@ action:
                     photo:
                     - url: "{{url_thumb}}"
                       caption: "{{mes_caption[:1024]}}"
-                    inline_keyboard: >-
-                        ❌:/frigate_{{camera}} {{video_id}} delete, 📲:/frigate_{{camera}} {{video_id}} live
+                    inline_keyboard: "{{inline_keyboard_new}}"
                     message_tag: "{{msg_tag}}"
-              - if: []
-                then:
+              - sequence:
                   - wait_for_trigger:
                       - platform: event
                         event_type: telegram_sent
@@ -177,49 +191,39 @@ action:
                   - variables:
                       message_id: "{{wait.trigger.event.data.message_id}}"
                       chat_id: "{{wait.trigger.event.data.chat_id }}"
-                  - repeat:
-                      until:
-                        - condition: template
-                          value_template: "{{wait.trigger.payload_json['type'] == 'end'}}"
-                      sequence:
-                        - wait_for_trigger:
-                            - platform: mqtt
-                              topic: frigate/events
-                              payload: "{{video_id}}"
-                              value_template: "{{value_json['after']['id']}}"
-                          timeout: "00:45:00"
-                        - if:
-                            - condition: template
-                              value_template: "{{not wait.trigger}}"
-                          then:
-                            - service: telegram_bot.edit_caption
-                              data:
-                                message_id: "{{message_id}}"
-                                chat_id: "{{chat_id}}"
-                                caption: "{{mes_caption}}"
-                                inline_keyboard:
-                                  - "❌Событие не закрыто:/frigate_{{camera}} {{video_id}} delete"
-                            - stop: истекло время для события
-                        - condition: template
-                          value_template: "{{wait.trigger.payload_json['type'] == 'end'}}"
-                        - variables:
+                  - wait_for_trigger:
+                      - platform: mqtt
+                        topic: frigate/events
+                        payload: "{{video_id}}/end"
+                        value_template: "{{value_json['after']['id']}}/{{ value_json['type']}}"
+                    timeout: "00:45:00"
+                  - if:
+                      - condition: template
+                        value_template: "{{not wait.trigger}}"
+                    then:
+                      - service: telegram_bot.edit_caption
+                        data:
+                          message_id: "{{message_id}}"
+                          chat_id: "{{chat_id}}"
+                          caption: "{{mes_caption}}"
+                          inline_keyboard: "{{inline_keyboard_error}}"
+                      - stop: истекло время для события
+                  - variables:
                             end_time: "{{wait.trigger.payload_json['after']['end_time']|timestamp_custom('%H:%M:%S', default='00:00:00')}}"
                             entered_zones: "{{trigger.payload_json['after']['entered_zones']}}"
                             current_zones: "{{wait.trigger.payload_json['after']['current_zones']}}"
                             offset_zones: "{{entered_zones|list|join(', ')}} => {{current_zones|list|join(', ')}}"
                             in_text_message: !input in_text_message
                             mes_caption: "📸{{in_text_message}}"
-                        - service: telegram_bot.edit_caption
-                          data:
+                  - service: telegram_bot.edit_caption
+                    data:
                             message_id: "{{message_id}}"
                             chat_id: "{{chat_id}}"
                             caption: "{{mes_caption[:1024]}}"
-                            inline_keyboard: >-
-                              📲:/frigate_{{camera}} {{video_id}} live, ❌:/frigate_{{camera}} {{video_id}} delete, 📼:/frigate_{{camera}} {{video_id}} clip
+                            inline_keyboard: "{{inline_keyboard_end}}"
               - choose:
                   - conditions: []
                     sequence: !input in_action
-
 
       - alias: "Обработка нажатий на кнопки в ТГ"
         conditions:
@@ -236,6 +240,9 @@ action:
               button_id: "{{trigger.event.data.id}}"
               button_id_pic: "{{((command_tg == 'thumb')|iif(button_id, False))}}"
               mes_caption: "{{trigger.event.data.message.caption}}"
+              inline_keyboard_reload: "⏳Выполняется загрузка видео⏳:/frigate_{{camera}} {{video_id}} reload"
+              inline_keyboard_clip: "🔚:/frigate_{{camera}} {{video_id}} thumb"
+              inline_keyboard_jpg: "📲:/frigate_{{camera}} {{video_id}} live, ❌:/frigate_{{camera}} {{video_id}} delete, 📼:/frigate_{{camera}} {{video_id}} clip"
           - service: logbook.log
             data:
                 name: "{{this.attributes.friendly_name}}"
@@ -286,23 +293,37 @@ action:
                   - condition: template
                     value_template: "{{command_tg=='reload' and this.attributes.current|int(0) < 1}}"
                 sequence:
-                  - service: telegram_bot.edit_replymarkup
-                    data:
-                      message_id: "{{message_id}}"
-                      chat_id: "{{chat_id}}"
-                      inline_keyboard: >-
-                        📲:/frigate_{{camera}} {{video_id}} live, ❌:/frigate_{{camera}} {{video_id}} delete, 📼:/frigate_{{camera}} {{video_id}} clip
-                  - service: telegram_bot.answer_callback_query
-                    data:
-                      show_alert: true
-                      message: Клавиатура обновлена
-                      callback_query_id: "{{button_id}}"
+                  - if:
+                      - condition: template
+                        value_template: "{{this.attributes.current|int(0) < 1}}"
+                    then:
+                      - service: telegram_bot.edit_replymarkup
+                        data:
+                          message_id: "{{message_id}}"
+                          chat_id: "{{chat_id}}"
+                          inline_keyboard: "{{inline_keyboard_jpg}}"
+                      - service: telegram_bot.answer_callback_query
+                        data:
+                          show_alert: true
+                          message: Клавиатура обновлена
+                          callback_query_id: "{{button_id}}"
+                    else:
+                      - stop: останавливаем для исключения ошибок в answer_callback, ошибочного нажатия на ⏳ reload
 
               - conditions:
                   - condition: template
-                    value_template: "{{command_tg=='reload'}}"
+                    value_template: "{{command_tg=='thumb' and this.attributes.current|int(0) < 1}}"
                 sequence:
-                  - stop: останавливаем для исключения ошибок в answer_callback, ошибочного нажатия на ⏳ reload
+                  - service: python_script.exec
+                    data:
+                      cache: true
+                      new_file: "{{frigate_api}}/{{video_id}}/{{in_type_photo}}.jpg"
+                      message_id: "{{message_id}}"
+                      new_message: "{{mes_caption.replace('🎥','📸')}}"
+                      chat_id: "{{chat_id}}"
+                      button_id: "{{button_id}}"
+                      keyboard: "{{inline_keyboard_jpg}}"
+                      file: /config/python_scripts/edit_media_telegram.py
 
               - conditions:
                   - condition: template
@@ -312,44 +333,57 @@ action:
                     data:
                       message_id: "{{message_id}}"
                       chat_id: "{{chat_id}}"
-                      inline_keyboard: >-
-                        ⏳Выполняется загрузка видео⏳:/frigate_{{camera}} {{video_id}} reload
-                  - service: python_script.exec
-                    data:
-                      cache: true
-                      new_file: "{{frigate_api}}/{{video_id}}/clip.mp4"
-                      message_id: "{{message_id}}"
-                      new_message: "{{mes_caption.replace('📸','🎥')}}"
-                      chat_id: "{{chat_id}}"
-                      button_id: "{{button_id}}"
-                      keyboard: >-
-                          🔄:/frigate_{{camera}} {{video_id}} clip, 🔚:/frigate_{{camera}} {{video_id}} thumb
-                      file: /config/python_scripts/edit_media_telegram.py
-                  - wait_for_trigger:
-                      - platform: event
-                        event_type: telegram_callback
-                        event_data:
-                          data: "/frigate_{{camera}} {{video_id}} thumb"
-                    timeout: !input in_time_wait
-                  - variables:
-                      button_id: |-
-                        {%-if not wait.trigger-%}
-                          False
-                        {%-else-%}
-                          {{-wait.trigger.event.data.id-}}
-                        {%-endif-%}
-                  - service: python_script.exec
-                    data:
-                      cache: true
-                      new_file: "{{frigate_api}}/{{video_id}}/{{in_type_photo}}.jpg"
-                      message_id: "{{message_id}}"
-                      new_message: "{{mes_caption.replace('🎥','📸')}}"
-                      chat_id: "{{chat_id}}"
-                      button_id: "{{button_id}}"
-                      keyboard: >-
-                        📲:/frigate_{{camera}} {{video_id}} live, ❌:/frigate_{{camera}} {{video_id}} delete, 📼:/frigate_{{camera}} {{video_id}} clip
-                      file: /config/python_scripts/edit_media_telegram.py
-
+                      inline_keyboard: "{{inline_keyboard_reload}}"
+                  - parallel:
+                      - service: python_script.exec
+                        data:
+                          cache: true
+                          new_file: "{{frigate_api}}/{{video_id}}/clip.mp4"
+                          message_id: "{{message_id}}"
+                          new_message: "{{mes_caption.replace('📸','🎥')}}"
+                          chat_id: "{{chat_id}}"
+                          button_id: "{{button_id}}"
+                          keyboard: "{{inline_keyboard_clip}}"
+                          file: /config/python_scripts/edit_media_telegram.py
+                      - sequence:
+                          - wait_for_trigger:
+                              - platform: event
+                                event_type: telegram_callback
+                                event_data:
+                                  data: "/frigate_{{camera}} {{video_id}} thumb"
+                              - platform: event
+                                event_type: edit_media_telegram
+                                event_data:
+                                  script_status: "error"
+                            timeout: !input in_time_wait
+                          - if:
+                              - condition: template
+                                value_template: "{{wait.trigger.event.event_type == 'edit_media_telegram'}}"
+                            then:
+                              - service: telegram_bot.edit_caption
+                                data:
+                                  message_id: "{{message_id}}"
+                                  chat_id: "{{chat_id}}"
+                                  caption: "{{mes_caption}}"
+                                  inline_keyboard: "{{inline_keyboard_jpg}}"
+                              - stop: Произошла ошибка при замене медиа
+                          - variables:
+                              button_id: |-
+                                {%-if not wait.trigger-%}
+                                  False
+                                {%-else-%}
+                                  {{-wait.trigger.event.data.id-}}
+                                {%-endif-%}
+                          - service: python_script.exec
+                            data:
+                              cache: true
+                              new_file: "{{frigate_api}}/{{video_id}}/{{in_type_photo}}.jpg"
+                              message_id: "{{message_id}}"
+                              new_message: "{{mes_caption.replace('🎥','📸')}}"
+                              chat_id: "{{chat_id}}"
+                              button_id: "{{button_id}}"
+                              keyboard: "{{inline_keyboard_jpg}}"
+                              file: /config/python_scripts/edit_media_telegram.py
             default:
               - delay:
                   hours: 0
@@ -359,5 +393,5 @@ action:
               - service: telegram_bot.answer_callback_query
                 data:
                   show_alert: true
-                  message: 🤔Если увидите это сообщение, то кажется что то пошло не так при нажатии на {{command_tg}}. Обновите 🔄 сообщение.
+                  message: 🤔Если увидите это сообщение по команде {{command_tg}}, то попробуйте позже. Сейчас запущено {{this.attributes.current|int(0)}} авто.
                   callback_query_id: "{{button_id}}"

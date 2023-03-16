@@ -56,20 +56,24 @@ try:
                                 reply_markup=reply_markup, 
                                 media = media_out,
                                 timeout=20000)
-        mes_alarm = "Успешно заменено медиа в TG"
-        show_alert = False
+        script_message = "Успешно заменено медиа в TG"
+        script_status = "success"
 except Exception as e:
-        show_alert = True
-        mes_alarm = f"Ошибка при замене медиа в TG в строке {e.__traceback__.tb_lineno}: {type(e).__name__} {e}. Файл: {new_file}"
-        logger.error(mes_alarm)
+        script_status = "error"
+        script_message = f"Ошибка при замене медиа в TG в строке {e.__traceback__.tb_lineno}: {type(e).__name__} {e}. Файл: {new_file}"
+        logger.error(script_message)
 
 hass.services.call('logbook', 'log', {
                 "name": "Замена медиа в telegram. ",
-                "message": f"Результат: {mes_alarm}",
+                "message": f"Результат: {script_message}",
                 "entity_id": "script.edit_media_telegram"})
 
+hass.bus.fire("edit_media_telegram", {"script_status": script_status,
+                                        "script_message": script_message})
+
 if (button_id):
+        show_alert = False if script_status == "success" else True
         hass.services.call('telegram_bot', 'answer_callback_query', {
                         "callback_query_id": button_id,
-                        "message": f"{mes_alarm[:200]}",
-                        "show_alert": show_alert})
+                        "message": f"{script_message[:200]}",
+                        "show_alert": show_alert })
