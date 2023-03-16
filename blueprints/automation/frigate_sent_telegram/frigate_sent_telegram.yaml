@@ -291,7 +291,7 @@ action:
 
               - conditions:
                   - condition: template
-                    value_template: "{{command_tg=='reload' and this.attributes.current|int(0) < 1}}"
+                    value_template: "{{command_tg=='reload'}}"
                 sequence:
                   - if:
                       - condition: template
