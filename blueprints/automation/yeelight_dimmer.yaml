@@ -1,5 +1,5 @@
 blueprint:
-  name: 📦Действия для диммера Yeelight
+  name: 🔘Действия для диммера Yeelight
   domain: automation
   input:
     button_device:

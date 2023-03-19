@@ -1,5 +1,5 @@
 blueprint:
-  name: 📦Свет по движению
+  name: 💡Свет по движению
   domain: automation
   input:
     in_motion:

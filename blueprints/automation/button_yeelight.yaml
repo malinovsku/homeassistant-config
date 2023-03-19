@@ -1,0 +1,52 @@
+blueprint:
+  name: 🔘Действия для кнопки Yeelight
+  domain: automation
+  input:
+    button_device:
+      name: Сенсор диммера
+      description: Сенсор диммера
+      selector:
+        entity:
+    one_press_action:
+      name: 1 нажатие
+      description: Дейтсвие при 1 нажатии кнопки
+      default: []
+      selector:
+        action:
+    two_press_action:
+      name: 2 нажатия
+      description: Дейтсвие при 2 нажатиях кнопки
+      default: []
+      selector:
+        action:
+    long_press_action:
+      name: Долгое нажатие
+      description: Дейтсвие при долгом нажатии кнопки
+      default: []
+      selector:
+        action:
+mode: parallel
+max: 50
+trigger:
+  - platform: state
+    entity_id:
+      - !input button_device
+    attribute: last_packet_id
+condition: []
+action:
+  - variables:
+      type_bt: "{{trigger.to_state.state}}"
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: '{{type_bt == "single press"}}'
+        sequence: !input one_press_action
+      - conditions:
+          - condition: template
+            value_template: '{{type_bt == "double press"}}'
+        sequence: !input two_press_action
+      - conditions:
+          - condition: template
+            value_template: '{{type_bt == "long press"}}'
+        sequence: !input long_press_action
+    default: []

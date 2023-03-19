@@ -29,8 +29,8 @@ blueprint:
         template:
     in_text_message:
       name: Текст сообщения
-      description: Доступны переменные camera, camera_friendly_name, start_time, end_time, offset_zones, object, url_thumb и шаблоны.
-      default: "📸*Движение* {{camera_friendly_name}}{{'\n'-}}⏱{{start_time}} по {{end_time}}{{'\n'-}}🎯{{offset_zones}}"
+      description: Доступны переменные camera, camera_friendly_name, start_time, end_time, diff_time, offset_zones, object, url_thumb и шаблоны.
+      default: "📸*Движение* {{camera_friendly_name}} {{diff_time}}s\n⏱{{start_time}} по {{end_time}}\n🎯{{offset_zones}}"
       selector:
         template:
     in_type_photo:
@@ -157,6 +157,7 @@ action:
               offset_zones: "{{entered_zones|list|join(', ')}} => {{current_zones|list|join(', ')}}"
               start_time: "{{trigger.payload_json['after']['start_time']|timestamp_custom('%Y-%m-%d %H:%M:%S', default='00:00:00')}}"
               end_time: "{{trigger.payload_json['after']['end_time']|timestamp_custom('%H:%M:%S', default='00:00:00')}}"
+              diff_time: 0
               msg_tag: "mot-cam-{{video_id}}"
               in_text_message: !input in_text_message
               mes_caption: "📸{{in_text_message}}"
@@ -218,7 +219,9 @@ action:
                                   inline_keyboard: "{{inline_keyboard_error}}"
                               - stop: истекло время для события
                           - variables:
+                                    start_time: "{{wait.trigger.payload_json['after']['start_time']|timestamp_custom('%Y-%m-%d %H:%M:%S', default='00:00:00')}}"
                                     end_time: "{{wait.trigger.payload_json['after']['end_time']|timestamp_custom('%H:%M:%S', default='00:00:00')}}"
+                                    diff_time: "{{(wait.trigger.payload_json['after']['end_time'] - wait.trigger.payload_json['after']['start_time'])|relative_time|int(0)}}"
                                     entered_zones: "{{trigger.payload_json['after']['entered_zones']}}"
                                     current_zones: "{{wait.trigger.payload_json['after']['current_zones']}}"
                                     offset_zones: "{{entered_zones|list|join(', ')}} => {{current_zones|list|join(', ')}}"

@@ -1,5 +1,5 @@
 blueprint:
-  name: 📦Действия для кнопки Xiaomi
+  name: 🔘Действия для кнопки Xiaomi
   domain: automation
   input:
     button_device:

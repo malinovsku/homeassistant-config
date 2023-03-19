@@ -138,7 +138,7 @@ action:
         for:
           hours: 0
           minutes: 0
-          seconds: 2
+          seconds: 3
     timeout: '00:10:00'
   - variables:
       volume_level: >-
