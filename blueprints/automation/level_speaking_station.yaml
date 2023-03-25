@@ -22,7 +22,7 @@ blueprint:
     in_all_station:
       name: Группа станций
       description: Группа станций для события station_volume, при котором срабатывает активация вместо SPEAKING.
-      default: media_player.yandex_station_vse
+      default: media_player.yandex_station
       selector:
         entity:
           domain: media_player
@@ -50,6 +50,18 @@ blueprint:
       default: []
       selector:
         action:
+    # in_before_action:
+    #   name: (Доп) Действия до возврата
+    #   description: Действия до возврата.
+    #   default: []
+    #   selector:
+    #     action:
+    # in_after_action:
+    #   name: (Доп) Действия после возврата
+    #   description: Действия после возврата.
+    #   default: []
+    #   selector:
+    #     action:
 
 trace:
   stored_traces: 100
@@ -138,7 +150,7 @@ action:
         for:
           hours: 0
           minutes: 0
-          seconds: 3
+          seconds: 2
     timeout: '00:10:00'
   - variables:
       volume_level: >-
