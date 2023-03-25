@@ -52,7 +52,7 @@ variables:
   in_pause_play: !input in_pause_play
   in_speaking_condition: !input in_speaking_condition
   level_voice: "{{in_level_voice_entity|float(0.5)}}"
-  old_level_voice: "{{state_attr(in_station, 'volume_level')}}"
+  old_level_voice: "{{state_attr(in_station, 'volume_level')|float(0.2)}}"
   states_station: "{{states(in_station)}}"
 
 trigger_variables:
