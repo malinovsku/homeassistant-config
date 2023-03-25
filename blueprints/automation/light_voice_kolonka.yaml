@@ -5,42 +5,44 @@ blueprint:
   input:
     in_station:
       name: Колонка
-      description: Колонка
       selector:
         entity:
           domain: media_player
           integration: yandex_station
     in_light:
-      name: Лампа
-      description: Лампа для подсветки
+      name: Лампа для подсветки
       selector:
         entity:
             domain: light
-    in_condition_activ_scene:
-      name: Выключить в конце лампу
-      description: Выключить в конце, не возвращать сцену до запуска.
+    in_light_night:
+      name: Объект ON\OFF для уровня яркости
+      description: |
+        **Оставьте sun.sun если данная настройка не нужна.**
+        При состоянии ON яркость с 255\10, при OFF яркость 30\3. Например для день\ночь.
+      default: sun.sun
       selector:
         entity:
-    in_light_night:
-      name: Признак для яркости
-      description: Признак для яркости, день\ночь
+    in_condition_activ_scene:
+      name: (Доп) Объект ON\OFF для условия выключения лампы в конце
+      description: |
+        **Оставьте sun.sun если данная настройка не нужна.**
+        (Доп) При состоянии ON лампа в конце будет выключена, при OFF будет возвращена сцена лампы как до запуска. 
+      default: sun.sun
       selector:
         entity:
     in_condition:
       name: (Доп) Условия для запуска
-      description: Условия для запуска.
+      description: (Доп) Тип дейтсвия выбрать условие. Для огранчения запуска автоматизации.
       default: []
       selector:
         action:
     in_color_speaking:
-      name: Цвет когда говорит
-      description: Цвет когда говорит.
+      name: (Доп) Цвет когда говорит
       default: [190, 0 , 255]
       selector:
         color_rgb:
     in_color_listening:
-      name: Цвет когда говорит
-      description: Цвет когда слушает.
+      name: (Доп) Цвет когда слушает
       default: [0, 255, 191]
       selector:
         color_rgb:
@@ -56,8 +58,9 @@ variables:
   in_color_listening: !input in_color_listening
   in_condition_activ_scene: !input in_condition_activ_scene
   scene_name: "{{'kolonka_voice_old_state_' + in_light.split('.')[1]}}"
-  br_light_min: "{{(states(in_light_night) == 'off')|iif(10, 3)}}"
-  br_light_max: "{{(states(in_light_night) == 'off')|iif(255, 30)}}"
+  br_light_min: "{{(states(in_light_night) != 'on')|iif(10, 3)}}"
+  br_light_max: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
+
 
 trigger:
   - platform: state
@@ -116,14 +119,14 @@ action:
 
                       - variables:
                           in_color_listening: "{{in_color_listening}}"
-                          brightness: "{{(states(in_light_night) == 'off')|iif(255, 30)}}"
+                          brightness: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
 
                       - service: light.turn_on
                         data:
                           rgb_color: "{{in_color_listening}}"
                           transition: 1
                           effect: Solid
-                          brightness: "{{(states(in_light_night) == 'off')|iif(255, 30)}}"
+                          brightness: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
                         target:
                           entity_id: !input in_light
 
@@ -149,7 +152,7 @@ action:
                           rgb_color: "{{in_color_listening}}"
                           transition: 1
                           effect: Solid
-                          brightness: "{{(states(in_light_night) == 'off')|iif(10, 3)}}"
+                          brightness: "{{(states(in_light_night) != 'on')|iif(10, 3)}}"
                         target:
                           entity_id: !input in_light
 
@@ -181,12 +184,12 @@ action:
 
                       - variables:
                           in_color_listening: "{{in_color_listening}}"
-                          brightness: "{{(states(in_light_night) == 'off')|iif(255, 30)}}"
+                          brightness: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
 
                       - service: light.turn_on
                         data:
                           transition: 1
-                          brightness: "{{(states(in_light_night) == 'off')|iif(255, 30)}}"
+                          brightness: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
                           effect: Solid
                           rgb_color: "{{in_color_speaking}}"
                         target: 
@@ -231,7 +234,7 @@ action:
 
                       - service: light.turn_on
                         data:
-                          brightness: "{{(states(in_light_night) == 'off')|iif(10, 3)}}"
+                          brightness: "{{(states(in_light_night) != 'on')|iif(10, 3)}}"
                           transition: 1
                           effect: Solid
                           rgb_color: "{{in_color_speaking}}"
@@ -263,7 +266,7 @@ action:
                         timeout: '00:00:01'
   - if:
       - condition: template
-        value_template: "{{in_condition_activ_scene}}"
+        value_template: "{{in_condition_activ_scene != 'sun.sun'}}"
       - condition: state
         entity_id: !input in_condition_activ_scene
         state: 'on'
