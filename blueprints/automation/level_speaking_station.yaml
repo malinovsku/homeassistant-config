@@ -112,19 +112,15 @@ action:
           minutes: 0
           seconds: 1
     timeout: '00:10:00'
-  - variables:
-      volume_level: >-
-        {%- if state_attr(in_station, 'volume_level')|float(0.0) !=
-        level_voice -%}
-          {{- (old_level_voice + state_attr(in_station, 'volume_level')|float(0.0) - level_voice)|round(1,default=20) -}}
-        {%- else -%}
-          {{- old_level_voice -}}
-        {%- endif -%}  
-  - service: media_player.volume_set
-    target:
-      entity_id: "{{in_station}}"
-    data:
-      volume_level: "{{volume_level}}"
+  - if:
+      - condition: template
+        value_template: "{{state_attr(in_station, 'volume_level')|float(0.0) == level_voice}}"
+    then:
+      - service: media_player.volume_set
+        target:
+          entity_id: "{{in_station}}"
+        data:
+          volume_level: "{{old_level_voice}}"
   - if:
       - condition: template
         value_template: "{{in_pause_play and states_station == 'playing'}}"
