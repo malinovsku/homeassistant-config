@@ -30,8 +30,6 @@ serverinfo = json.loads(ws.recv())
 # Проходимся по каждому instance и отправляем картинку
 for inst in serverinfo["info"]["instance"]:
     num_instance = inst["instance"]
-    if num_instance > len(serverinfo["info"]["instance"]):
-        break
     if num_instance != 0:
         data_i = {"command" : "instance", 
                     "subcommand" : "switchTo", 
