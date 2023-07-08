@@ -7,6 +7,7 @@ data:
         file: /config/python_scripts/hyperion_set_image.py
         file_path: Путь к картинке. Обязательно
         duration: Время задержки в ms установки картинки. Необязательно
+        run_instance: Массив номеров instance, например [4] или [0,2]. Если не указано, то запсукается на всех. Необязательно
 
 '''
 import json
