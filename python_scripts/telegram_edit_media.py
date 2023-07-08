@@ -78,11 +78,6 @@ except Exception as e:
         script_message = f"Ошибка при замене медиа в TG в строке {e.__traceback__.tb_lineno}: {type(e).__name__} {e}. Файл: {new_file}"
         logger.error(script_message)
 
-hass.services.call('logbook', 'log', {
-                "name": "📤Telegram замена медиа. ",
-                "message": f"Результат: {script_message}",
-                "entity_id": "script.telegram_edit_media"})
-
 hass.bus.fire("py_script", {"script_name": "telegram_edit_media",
                         "script_status": script_status,
                         "script_message": script_message})

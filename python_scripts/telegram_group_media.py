@@ -6,7 +6,7 @@ service: python_script.exec
 data:
     file: /config/python_scripts/telegram_group_media.py
     send_files: Список путей к файлу или ссылок, пример ['/config/pic/1.png', '/config/pic/2.png']
-    chat_id: Чат chat_id для отправки
+    chat_id: Чат для отправки
 
 '''
 import telegram
@@ -47,20 +47,7 @@ try:
                 media_out.append(telegram.InputMediaPhoto(media, caption))
             else:
                 raise Exception('Расширение файла не определено! Возможно только mp4, jpg, png, jpeg')
-        if inline_keyboard:
-                inline_kb=[]
-                inline_keyboard = inline_keyboard if isinstance(inline_keyboard, list) else [inline_keyboard]
-                for row in inline_keyboard:
-                        buttons = []
-                        for key in row.split(","):
-                                if ":/" in key:
-                                        label = key.split(":/")[0]
-                                        command = key[len(label) + 1 :]
-                                        buttons.append(InlineKeyboardButton(label, callback_data=command))
-                        inline_kb.append(buttons)
-                reply_markup = InlineKeyboardMarkup(inline_kb)
         bot.sendMediaGroup(chat_id=chat_id, 
-                            reply_markup=reply_markup, 
                             media = media_out,
                             timeout=20000)
     script_message = "Успешно отправлена группа медиа в TG"
