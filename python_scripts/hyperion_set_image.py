@@ -26,14 +26,13 @@ ws = create_connection(f"ws://{hyperion_host}/json-rpc")
 data = {"command":"serverinfo"}
 ws.send(json.dumps(data))
 serverinfo = json.loads(ws.recv())
-
 # Проходимся по каждому instance и отправляем картинку
 for inst in serverinfo["info"]["instance"]:
     num_instance = inst["instance"]
     if num_instance != 0:
         data_i = {"command" : "instance", 
                     "subcommand" : "switchTo", 
-                    "instance" : num_instance+1}
+                    "instance" : num_instance}
         ws.send(json.dumps(data_i))
     if inst["running"]:
         # Включаем LED Device
