@@ -1,0 +1,70 @@
+sensor:
+  - platform: files
+    folder: /config/www/hyperion
+    filter: '*.png'
+    name: hyperion_images
+    sort: date
+
+
+light:
+  - platform: template
+    lights:
+      hyperion_images:
+        friendly_name: hyperion_images
+        unique_id: hyperion_images
+        level_template: "{{state_attr('light.hyperion_za_tv', 'brightness')|int(0)}}"
+        value_template: "{{states('group.all_hyperion_led_device')}}"
+        effect_list_template: "{{(state_attr('sensor.hyperion_images', 'fileList')|join(',')).replace('/config/www/hyperion/', '').replace('.png', '').split(',')}}"
+        effect_template: "{{state_attr('light.hyperion_images', 'effect')}}"
+        icon_template: "{{ (states('group.all_hyperion_led_device') == 'on') | iif('mdi:palette', 'mdi:palette-outline') }}"
+        turn_on:
+          service: switch.turn_on
+          data: {}
+          entity_id: group.all_hyperion_led_device
+        turn_off:
+          service: switch.turn_off
+          data: {}
+          entity_id: group.all_hyperion_led_device
+        set_level:
+          service: light.turn_on
+          data:
+            brightness_pct: "{{(brightness / 255 * 100)|int(0)}}"
+          entity_id: group.all_hyperion
+        set_effect:
+          - if:
+              - condition: template
+                value_template: "{{effect == 'Выключить'}}"
+            then:
+              - service: python_script.exec
+                data:
+                  file: /config/python_scripts/hyperion_set_image.py
+            else:
+              - service: python_script.exec
+                data:
+                  file: /config/python_scripts/hyperion_set_image.py
+                  file_path: "/config/www/hyperion/{{effect}}.png"
+
+# template:
+#   - select:
+#       state: "{{this.state}}"
+#       # state: "{{states('select.hyperion_images')}}"
+#       # state: "{{state}}"
+#       # state: "{{option}}"
+#       name: hyperion_images
+#       optimistic: True
+#       options: "{{(state_attr('sensor.hyperion_images', 'fileList')|join(',')).replace('/config/www/hyperion/', '').replace('.png', '').split(',')}}"
+#       select_option: 
+#         - if:
+#             - condition: template
+#               value_template: "{{this.state == 'Выключить'}}"
+#           then:
+#             - service: python_script.exec
+#               data:
+#                 # cache: false
+#                 file: /config/python_scripts/hyperion_set_image.py
+#           else:
+#             - service: python_script.exec
+#               data:
+#                 # cache: false
+#                 file: /config/python_scripts/hyperion_set_image.py
+#                 file_path: "/config/www/hyperion/{{this.state}}.png"
