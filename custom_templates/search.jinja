@@ -1,0 +1,47 @@
+
+{%- macro search_entity(domen = '', search='', device_class=[], state=[], not_entity=[], integration='', map_attr='entity_id', join_text=',', group=None, area_name=False) -%}
+
+{%- if domen != '' -%}
+    {%- set fuck = states[domen] -%}
+{%- else -%}
+    {%- set fuck = states -%}
+{%- endif -%}
+
+{%- if search != '' -%}
+    {%- set fuck = fuck | selectattr('entity_id', 'search', search ) -%}
+{%- endif -%}
+
+{%- if not_entity != [] -%}
+    {%- set fuck = fuck | rejectattr('entity_id', 'in', not_entity) -%}
+{%- endif -%}
+
+{%- if device_class != [] -%}
+    {%- set fuck = fuck | selectattr('attributes.device_class', 'defined') 
+                        | selectattr('attributes.device_class', 'eq', device_class) -%}
+{%- endif -%}
+
+{%- if integration != '' -%}
+    {%- set fuck = fuck | selectattr('entity_id', 'in', integration_entities(integration)) -%}
+{%- endif -%}
+
+{%- if state != [] -%}
+    {%- set fuck = fuck | selectattr('state', 'eq', state) -%}
+{%- endif -%}
+
+{%- if group == True -%}
+    {%- set fuck = fuck | selectattr('attributes.entity_id', 'defined') -%}
+{%- elif group == False -%}
+    {%- set fuck = fuck | rejectattr('attributes.entity_id', 'defined') -%}
+{%- endif -%}
+
+{%- set fuck = fuck | map(attribute=map_attr) -%}
+
+{%- if area_name -%}
+    {%- set fuck = fuck | map('area_name') -%}
+{%- endif -%}
+
+{{- fuck | unique
+         | list
+         | join(join_text) -}}
+
+{%- endmacro -%}
