@@ -1,8 +1,10 @@
 
-{%- macro search_entity(domen = '', search='', device_class=[], state=[], not_entity=[], integration='', map_attr='entity_id', join_text=',', group=None, area_name=False) -%}
+{%- macro search_entity(domen_or_group = '', search='', device_class=[], state=[], not_entity=[], integration='', map_attr='entity_id', join_text=',', group=None, area_name=False) -%}
 
-{%- if domen != '' -%}
-    {%- set fuck = states[domen] -%}
+{%- if '.' in domen_or_group -%}
+    {%- set fuck = expand(domen_or_group) -%}
+{%- elif domen_or_group != '' -%}
+    {%- set fuck = states[domen_or_group] -%}
 {%- else -%}
     {%- set fuck = states -%}
 {%- endif -%}
