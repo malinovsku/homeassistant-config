@@ -1,49 +1,58 @@
-
-{%- macro search_entity(domen_or_group = '', search='', device_class=[], state=[], not_entity=[], integration='', map_attr='entity_id', join_text=',', group=None, area_name=False) -%}
+{%- macro search_entity(domen_or_group = '', search='', device_class=[], state=[], not_entity=[], integration='', map_attr='entity_id', join_text=', ', group=None, area_name=False, count=False, opt_attr=None, opt_attr_name='') -%}
 
 {%- if '.' in domen_or_group -%}
-    {%- set fuck = expand(domen_or_group) -%}
+    {%- set var_obj = expand(domen_or_group) -%}
 {%- elif domen_or_group != '' -%}
-    {%- set fuck = states[domen_or_group] -%}
+    {%- set var_obj = states[domen_or_group] -%}
 {%- else -%}
-    {%- set fuck = states -%}
+    {%- set var_obj = states -%}
 {%- endif -%}
 
 {%- if search != '' -%}
-    {%- set fuck = fuck | selectattr('entity_id', 'search', search ) -%}
+    {%- set var_obj = var_obj | selectattr('entity_id', 'search', search ) -%}
 {%- endif -%}
 
 {%- if not_entity != [] -%}
-    {%- set fuck = fuck | rejectattr('entity_id', 'in', not_entity) -%}
+    {%- set var_obj = var_obj | rejectattr('entity_id', 'in', not_entity) -%}
 {%- endif -%}
 
 {%- if device_class != [] -%}
-    {%- set fuck = fuck | selectattr('attributes.device_class', 'defined') 
+    {%- set var_obj = var_obj | selectattr('attributes.device_class', 'defined') 
                         | selectattr('attributes.device_class', 'eq', device_class) -%}
 {%- endif -%}
 
+{%- if opt_attr == True -%}
+    {%- set var_obj = var_obj | selectattr('attributes.'+opt_attr_name, 'defined') -%}
+{%- elif opt_attr == False -%}
+    {%- set var_obj = var_obj | rejectattr('attributes.'+opt_attr_name, 'defined') -%}
+{%- endif -%}
+
 {%- if integration != '' -%}
-    {%- set fuck = fuck | selectattr('entity_id', 'in', integration_entities(integration)) -%}
+    {%- set var_obj = var_obj | selectattr('entity_id', 'in', integration_entities(integration)) -%}
 {%- endif -%}
 
 {%- if state != [] -%}
-    {%- set fuck = fuck | selectattr('state', 'eq', state) -%}
+    {%- set var_obj = var_obj | selectattr('state', 'eq', state) -%}
 {%- endif -%}
 
 {%- if group == True -%}
-    {%- set fuck = fuck | selectattr('attributes.entity_id', 'defined') -%}
+    {%- set var_obj = var_obj | selectattr('attributes.entity_id', 'defined') -%}
 {%- elif group == False -%}
-    {%- set fuck = fuck | rejectattr('attributes.entity_id', 'defined') -%}
+    {%- set var_obj = var_obj | rejectattr('attributes.entity_id', 'defined') -%}
 {%- endif -%}
 
-{%- set fuck = fuck | map(attribute=map_attr) -%}
+{%- set var_obj = var_obj | map(attribute=map_attr) -%}
 
 {%- if area_name -%}
-    {%- set fuck = fuck | map('area_name') -%}
+    {%- set var_obj = var_obj | map('area_name') -%}
 {%- endif -%}
 
-{{- fuck | unique
-         | list
-         | join(join_text) -}}
+{%- set var_obj = var_obj | unique | list -%}
+
+{%- if count -%}
+    {{- var_obj | count -}}
+{%- else -%}
+    {{- var_obj | join(join_text) -}}
+{%- endif -%}
 
 {%- endmacro -%}
