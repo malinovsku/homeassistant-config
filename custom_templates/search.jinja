@@ -1,4 +1,4 @@
-{%- macro search_entity(domen_or_group = '', search='', device_class=[], state=[], not_entity=[], integration='', map_attr='entity_id', join_text=', ', group=None, area_name=False, count=False, opt_attr=None, opt_attr_name='') -%}
+{%- macro search_entity(domen_or_group = '', search='', search_attr='entity_id', device_class=[], state=[], not_entity=[], integration='', map_attr='entity_id', join_text=', ', group=None, area_name=False, count=False, opt_attr=None, opt_attr_name='') -%}
 
 {%- if '.' in domen_or_group -%}
     {%- set var_obj = expand(domen_or_group) -%}
@@ -9,7 +9,7 @@
 {%- endif -%}
 
 {%- if search != '' -%}
-    {%- set var_obj = var_obj | selectattr('entity_id', 'search', search ) -%}
+    {%- set var_obj = var_obj | selectattr(search_attr, 'search', search ) -%}
 {%- endif -%}
 
 {%- if not_entity != [] -%}
