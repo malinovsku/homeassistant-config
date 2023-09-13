@@ -35,7 +35,8 @@ blueprint:
       description: (Доп) Тип дейтсвия выбрать условие. Для огранчения запуска автоматизации.
       default: []
       selector:
-        action:
+        # action:
+        condition:
     in_color_speaking:
       name: (Доп) Цвет когда говорит
       default: [190, 0 , 255]
