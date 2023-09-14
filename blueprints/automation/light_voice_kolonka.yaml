@@ -10,16 +10,16 @@ blueprint:
           domain: media_player
           integration: yandex_station
     in_light:
-      name: Лампа для подсветки
+      name: Лампы для подсветки
       selector:
         entity:
           domain: light
           multiple: true
     in_light_night:
-      name: Объект ON\OFF для уровня яркости
+      name: (Доп) Объект ON\OFF для уровня яркости
       description: |
         **Оставьте sun.sun если данная настройка не нужна.**
-        При состоянии ON яркость с 255\10, при OFF яркость 30\3. Например для день\ночь.
+        (Доп) При состоянии ON яркость с 255\10, при OFF яркость 30\3. Например для день\ночь.
       default: sun.sun
       selector:
         entity:
@@ -33,7 +33,6 @@ blueprint:
         entity:
     in_condition:
       name: (Доп) Условия для запуска
-      description: (Доп) Тип дейтсвия выбрать условие. Для огранчения запуска автоматизации.
       default: []
       selector:
         condition:
@@ -68,7 +67,6 @@ variables:
   in_color_speaking: !input in_color_speaking
   in_color_listening: !input in_color_listening
   in_condition_activ_scene: !input in_condition_activ_scene
-  # scene_name: "{{'kolonka_voice_old_state_' + in_light.split('.')[1]}}"
   scene_name: "{{this.entity_id.split('.')[1]}}"
   br_light_min: "{{(states(in_light_night) != 'on')|iif(10, 3)}}"
   br_light_max: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
@@ -93,6 +91,9 @@ action:
       scene_id: >-
         {{scene_name}}
       snapshot_entities: !input in_light
+  - service: light.turn_on
+    target:
+      entity_id: !input in_light
   - repeat:
       until:
         - condition: or
@@ -101,20 +102,24 @@ action:
               entity_id: !input in_station
               attribute: alice_state
               state: IDLE
-              for:
-                hours: 0
-                minutes: 0
-                seconds: 1
-                milliseconds: 0
-            - condition: state
-              entity_id: !input in_station
-              attribute: alice_state
-              state: IDLE
-              for:
-                hours: 0
-                minutes: 0
-                seconds: 2
-                milliseconds: 0
+            # - condition: state
+            #   entity_id: !input in_station
+            #   attribute: alice_state
+            #   state: IDLE
+            #   for:
+            #     hours: 0
+            #     minutes: 0
+            #     seconds: 1
+            #     milliseconds: 0
+            # - condition: state
+            #   entity_id: !input in_station
+            #   attribute: alice_state
+            #   state: IDLE
+            #   for:
+            #     hours: 0
+            #     minutes: 0
+            #     seconds: 2
+            #     milliseconds: 0
             - condition: state
               entity_id: !input in_light
               state: "off"
@@ -135,14 +140,12 @@ action:
 
                       - variables:
                           in_color_listening: "{{in_color_listening}}"
-                          # brightness_raw: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
-                          # brightness: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
                           brightness: >-
                             {%- if states(in_light_night) != 'on' and repeat.index%2 != 0 -%}
                               255
                             {%- elif states(in_light_night) != 'on' and repeat.index%2 == 0 -%}
                               30
-                            {%- elif repeat.index%2 == 0 -%}
+                            {%- elif repeat.index%2 != 0 -%}
                               10
                             {%- else -%}
                               3
@@ -202,7 +205,7 @@ action:
                               255
                             {%- elif states(in_light_night) != 'on' and repeat.index%2 == 0 -%}
                               30
-                            {%- elif repeat.index%2 == 0 -%}
+                            {%- elif repeat.index%2 != 0 -%}
                               10
                             {%- else -%}
                               3
