@@ -1,292 +1,155 @@
 blueprint:
-  name: 🔮Подсветка когда говорит и слушает Алиса
+  name: 📢Громкость и пауза Ястанции когда говорит и слушает Алиса
   domain: automation
-  description: Подсветка когда говорит и слушает Алиса
+  description: |
+    Зпускается при смене атрибута станции alice_state на LISTENING или при условии ниже на SPEAKING.
   input:
     in_station:
       name: Колонка
+      description: Колонка
       selector:
         entity:
           domain: media_player
           integration: yandex_station
-    in_light:
-      name: Лампа для подсветки
+    in_all_station:
+      name: Группа станций
+      description: Группа станций для события station_volume, при котором срабатывает активация вместо SPEAKING.
+      default: media_player.yandex_station_vse
       selector:
         entity:
-            domain: light
-    in_light_night:
-      name: Объект ON\OFF для уровня яркости
-      description: |
-        **Оставьте sun.sun если данная настройка не нужна.**
-        При состоянии ON яркость с 255\10, при OFF яркость 30\3. Например для день\ночь.
-      default: sun.sun
+          domain: media_player
+    in_level_voice_entity:
+      name: Объект для громкости
+      description: Объект для громкости
       selector:
         entity:
-    in_condition_activ_scene:
-      name: (Доп) Объект ON\OFF для условия выключения лампы в конце
-      description: |
-        **Оставьте sun.sun если данная настройка не нужна.**
-        (Доп) При состоянии ON лампа в конце будет выключена, при OFF будет возвращена сцена лампы как до запуска. 
-      default: sun.sun
+          domain: input_number
+    in_speaking_condition:
+      name: Запускать при событии SPEAKING
+      description: Запускать при событии SPEAKING.
+      default: false
       selector:
-        entity:
+        boolean:
+    in_pause_play:
+      name: Дополнительно ставить на паузу
+      description: Дополнительно ставить на паузу
+      default: false
+      selector:
+        boolean:
     in_condition:
       name: (Доп) Условия для запуска
-      description: (Доп) Тип дейтсвия выбрать условие. Для огранчения запуска автоматизации.
+      description: Условия для запуска.
       default: []
       selector:
-        condition:
-    in_color_speaking:
-      name: (Доп) Цвет когда говорит
-      default: [190, 0 , 255]
-      selector:
-        color_rgb:
-    in_color_listening:
-      name: (Доп) Цвет когда слушает
-      default: [0, 255, 191]
-      selector:
-        color_rgb:
-    in_speed_loop:
-      name: (Доп) Скорость цикла и transition лампы
-      default: 0.8
-      selector:
-        number:
-          min: 0.2
-          max: 1
-          step: 0.1
-          unit_of_measurement: s
-          mode: slider
+        action:
 
-max_exceeded: silent
+trace:
+  stored_traces: 100
 
-mode: single
+mode: parallel
+
+max: 100
 
 variables:
-  in_light: !input in_light
-  in_light_night: !input in_light_night
-  in_color_speaking: !input in_color_speaking
-  in_color_listening: !input in_color_listening
-  in_condition_activ_scene: !input in_condition_activ_scene
-  scene_name: "{{'kolonka_voice_old_state_' + in_light.split('.')[1]}}"
-  br_light_min: "{{(states(in_light_night) != 'on')|iif(10, 3)}}"
-  br_light_max: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
-  in_speed_loop: !input in_speed_loop
+  in_station: !input in_station
+  in_level_voice_entity: !input in_level_voice_entity
+  in_pause_play: !input in_pause_play
+  in_speaking_condition: !input in_speaking_condition
+  level_voice: "{{states(in_level_voice_entity)|float(0.0)}}"
+  old_level_voice: "{{state_attr(in_station, 'volume_level')}}"
+  state_station: "{{states(in_station)}}"
 
+trigger_variables:
+  in_station: !input in_station
 
 trigger:
   - platform: state
     entity_id: !input in_station
     attribute: alice_state
-    to: SPEAKING
+    to: LISTENING
+    variables:
+      gromkost: max
+  - platform: event
+    event_type: station_volume
+    event_data:
+      station: "{{in_station}}"
+    variables:
+      gromkost: "{{trigger.event.data.gromkost}}"
+  - platform: event
+    event_type: station_volume
+    event_data:
+      station: !input in_all_station
+    variables:
+      gromkost: "{{trigger.event.data.gromkost}}"
   - platform: state
     entity_id: !input in_station
     attribute: alice_state
-    to: LISTENING
+    to: SPEAKING
+    variables:
+      gromkost: max
+    id: SPEAKING
 
-condition: !input in_condition
+condition: 
+  - condition: or
+    conditions:
+      - condition: not
+        conditions:
+          - condition: trigger
+            id: SPEAKING
+      - condition: and
+        conditions:
+          - condition: trigger
+            id: SPEAKING
+          - condition: template
+            value_template: "{{in_speaking_condition}}"
 
 action:
-  - service: scene.create
-    data:
-      scene_id: >-
-        {{scene_name}}
-      snapshot_entities: !input in_light
-  - repeat:
-      until:
-        - condition: or
-          conditions: 
-            - condition: state
-              entity_id: !input in_station
-              attribute: alice_state
-              state: IDLE
-              for:
-                hours: 0
-                minutes: 0
-                seconds: 1
-                milliseconds: 0
-            - condition: state
-              entity_id: !input in_station
-              attribute: alice_state
-              state: IDLE
-              for:
-                hours: 0
-                minutes: 0
-                seconds: 2
-                milliseconds: 0
-      sequence:
-        - if:
-            - condition: state
-              entity_id: !input in_station
-              attribute: alice_state
-              state: LISTENING
-          then:
-                - repeat:
-                    while:
-                      - condition: state
-                        entity_id: !input in_station
-                        attribute: alice_state
-                        state: LISTENING
-                    sequence:
-
-                      - variables:
-                          in_color_listening: "{{in_color_listening}}"
-                          brightness: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
-
-                      - service: light.turn_on
-                        data:
-                          rgb_color: "{{in_color_listening}}"
-                          transition: "{{in_speed_loop}}"
-                          effect: Solid
-                          brightness: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
-                        target:
-                          entity_id: !input in_light
-
-                      - condition: state
-                        entity_id: !input in_station
-                        attribute: alice_state
-                        state: LISTENING
-
-                      - wait_for_trigger:
-                          - platform: state
-                            entity_id: !input in_station
-                            attribute: alice_state
-                            # from: SPEAKING
-                        timeout: '00:00:0{{in_speed_loop}}'
-
-                      - condition: state
-                        entity_id: !input in_station
-                        attribute: alice_state
-                        state: LISTENING
-
-                      - service: light.turn_on
-                        data:
-                          rgb_color: "{{in_color_listening}}"
-                          transition: "{{in_speed_loop}}"
-                          effect: Solid
-                          brightness: "{{(states(in_light_night) != 'on')|iif(10, 3)}}"
-                        target:
-                          entity_id: !input in_light
-
-                      - condition: state
-                        entity_id: !input in_station
-                        attribute: alice_state
-                        state: LISTENING
-
-                      - wait_for_trigger:
-                          - platform: state
-                            entity_id: !input in_station
-                            attribute: alice_state
-                            # from: SPEAKING
-                        timeout: '00:00:0{{in_speed_loop}}'
-          else:
-                - repeat:
-                    until:
-                      - condition: or
-                        conditions:
-                          - condition: state
-                            entity_id: !input in_station
-                            attribute: alice_state
-                            state: LISTENING
-                          - condition: state
-                            entity_id: !input in_station
-                            attribute: alice_state
-                            state: IDLE
-                    sequence:
-
-                      - variables:
-                          in_color_listening: "{{in_color_listening}}"
-                          brightness: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
-
-                      - service: light.turn_on
-                        data:
-                          transition: "{{in_speed_loop}}"
-                          brightness: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
-                          effect: Solid
-                          rgb_color: "{{in_color_speaking}}"
-                        target: 
-                          entity_id: !input in_light
-
-                      - condition: not
-                        conditions:
-                          - condition: or
-                            conditions:
-                              - condition: state
-                                entity_id: !input in_station
-                                attribute: alice_state
-                                state: LISTENING
-                              - condition: state
-                                entity_id: !input in_station
-                                attribute: alice_state
-                                state: IDLE
-
-                      - wait_for_trigger:
-                          - platform: state
-                            entity_id: !input in_station
-                            attribute: alice_state
-                            from: LISTENING
-                          - platform: state
-                            entity_id: !input in_station
-                            attribute: alice_state
-                            from: IDLE
-                        timeout: '00:00:0{{in_speed_loop}}'
-
-                      - condition: not
-                        conditions:
-                          - condition: or
-                            conditions:
-                              - condition: state
-                                entity_id: !input in_station
-                                attribute: alice_state
-                                state: LISTENING
-                              - condition: state
-                                entity_id: !input in_station
-                                attribute: alice_state
-                                state: IDLE
-
-                      - service: light.turn_on
-                        data:
-                          brightness: "{{(states(in_light_night) != 'on')|iif(10, 3)}}"
-                          transition: "{{in_speed_loop}}"
-                          effect: Solid
-                          rgb_color: "{{in_color_speaking}}"
-                        target: 
-                          entity_id: !input in_light
-
-                      - condition: not
-                        conditions:
-                          - condition: or
-                            conditions:
-                              - condition: state
-                                entity_id: !input in_station
-                                attribute: alice_state
-                                state: LISTENING
-                              - condition: state
-                                entity_id: !input in_station
-                                attribute: alice_state
-                                state: IDLE
-
-                      - wait_for_trigger:
-                          - platform: state
-                            entity_id: !input in_station
-                            attribute: alice_state
-                            from: LISTENING
-                          - platform: state
-                            entity_id: !input in_station
-                            attribute: alice_state
-                            from: IDLE
-                        timeout: '00:00:0{{in_speed_loop}}'
+  - condition: !input in_condition
+  - variables:
+      new_volume_level: "{{(gromkost == 'max') | iif(level_voice, 0.0)}}"
+  # - condition: template
+  #   value_template: "{{old_level_voice != level_voice}}"
+  - condition: template
+    value_template: "{{old_level_voice < level_voice}}"
+  - condition: template
+    value_template: "{{state_attr(in_station, 'is_volume_muted') == false}}"
   - if:
       - condition: template
-        value_template: "{{in_condition_activ_scene != 'sun.sun'}}"
-      - condition: state
-        entity_id: !input in_condition_activ_scene
-        state: 'on'
+        value_template: "{{in_pause_play and states_station == 'playing'}}"
     then:
-      - service: light.turn_off
+      - service: media_player.media_pause
         data: {}
         target:
-          entity_id: !input in_light
-    else:
-      - service: scene.turn_on
+          entity_id: !input in_station
+  - service: media_player.volume_set
+    target:
+      entity_id: "{{in_station}}"
+    data:
+      volume_level: "{{new_volume_level}}"
+  - wait_for_trigger:
+      - platform: state
+        entity_id: !input in_station
+        attribute: alice_state
+        to: IDLE
+        for:
+          hours: 0
+          minutes: 0
+          seconds: 3
+    timeout: '00:10:00'
+  - if:
+      - condition: template
+        value_template: "{{state_attr(in_station, 'volume_level')|float(0.0) == level_voice or state_attr(in_station, 'is_volume_muted') == true}}"
+    then:
+      - service: media_player.volume_set
         target:
-          entity_id: 'scene.{{scene_name}}'
+          entity_id: "{{in_station}}"
+        data:
+          volume_level: "{{old_level_voice}}"
+  - if:
+      - condition: template
+        value_template: "{{in_pause_play and states_station == 'playing'}}"
+    then:
+      - service: media_player.media_play
+        target:
+              entity_id: !input in_station
+        data: {}
