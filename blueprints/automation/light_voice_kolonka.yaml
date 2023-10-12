@@ -56,6 +56,16 @@ blueprint:
           step: 0.1
           unit_of_measurement: s
           mode: slider
+    in_delay_idle:
+      name: (Доп) Ожидание IDLE при завершении
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 5
+          step: 0.2
+          unit_of_measurement: s
+          mode: slider
 
 max_exceeded: silent
 
@@ -71,6 +81,7 @@ variables:
   br_light_min: "{{(states(in_light_night) != 'on')|iif(10, 3)}}"
   br_light_max: "{{(states(in_light_night) != 'on')|iif(255, 30)}}"
   in_speed_loop: !input in_speed_loop
+  in_delay_idle: !input in_delay_idle
 
 
 trigger:
@@ -102,130 +113,83 @@ action:
               entity_id: !input in_station
               attribute: alice_state
               state: IDLE
-            # - condition: state
-            #   entity_id: !input in_station
-            #   attribute: alice_state
-            #   state: IDLE
-            #   for:
-            #     hours: 0
-            #     minutes: 0
-            #     seconds: 1
-            #     milliseconds: 0
-            # - condition: state
-            #   entity_id: !input in_station
-            #   attribute: alice_state
-            #   state: IDLE
-            #   for:
-            #     hours: 0
-            #     minutes: 0
-            #     seconds: 2
-            #     milliseconds: 0
+              for:
+                hours: 0
+                minutes: 0
+                seconds: 0
+                milliseconds: "{{in_delay_idle * 1000}}"
             - condition: state
               entity_id: !input in_light
               state: "off"
       sequence:
-        - if:
-            - condition: state
-              entity_id: !input in_station
-              attribute: alice_state
-              state: LISTENING
-          then:
-                - repeat:
-                    while:
-                      - condition: state
-                        entity_id: !input in_station
-                        attribute: alice_state
-                        state: LISTENING
-                    sequence:
-
-                      - variables:
-                          in_color_listening: "{{in_color_listening}}"
-                          brightness: >-
-                            {%- if states(in_light_night) != 'on' and repeat.index%2 != 0 -%}
-                              255
-                            {%- elif states(in_light_night) != 'on' and repeat.index%2 == 0 -%}
-                              30
-                            {%- elif repeat.index%2 != 0 -%}
-                              10
-                            {%- else -%}
-                              3
-                            {%- endif -%}
-
-                      - condition: state
-                        entity_id: !input in_light
-                        state: "on"
-
-                      - service: light.turn_on
-                        data:
-                          rgb_color: "{{in_color_listening}}"
-                          transition: "{{in_speed_loop}}"
-                          effect: Solid
-                          brightness: "{{brightness}}"
-                        target:
-                          entity_id: !input in_light
-
-                      - condition: state
-                        entity_id: !input in_station
-                        attribute: alice_state
-                        state: LISTENING
-
-                      - condition: state
-                        entity_id: !input in_light
-                        state: "on"
-
-                      - wait_for_trigger:
-                          - platform: state
-                            entity_id: !input in_station
-                            attribute: alice_state
-                            # from: SPEAKING
-                          - platform: state
-                            entity_id: !input in_light
-                            from: "off"
-                        timeout: '00:00:0{{in_speed_loop}}'
-
-          else:
-                - repeat:
-                    until:
-                      - condition: or
-                        conditions:
+        - choose:
+            - conditions:
+                - condition: state
+                  entity_id: !input in_station
+                  attribute: alice_state
+                  state: LISTENING
+              sequence:
+                    - repeat:
+                        while:
                           - condition: state
                             entity_id: !input in_station
                             attribute: alice_state
                             state: LISTENING
+                        sequence:
+
+                          - variables:
+                              in_color_listening: "{{in_color_listening}}"
+                              brightness: >-
+                                {%- if states(in_light_night) != 'on' and repeat.index%2 != 0 -%}
+                                  255
+                                {%- elif states(in_light_night) != 'on' and repeat.index%2 == 0 -%}
+                                  30
+                                {%- elif repeat.index%2 != 0 -%}
+                                  10
+                                {%- else -%}
+                                  3
+                                {%- endif -%}
+
+                          - condition: state
+                            entity_id: !input in_light
+                            state: "on"
+
+                          - service: light.turn_on
+                            data:
+                              rgb_color: "{{in_color_listening}}"
+                              transition: "{{in_speed_loop}}"
+                              effect: Solid
+                              brightness: "{{brightness}}"
+                            target:
+                              entity_id: !input in_light
+
                           - condition: state
                             entity_id: !input in_station
                             attribute: alice_state
-                            state: IDLE
-                    sequence:
+                            state: LISTENING
 
-                      - variables:
-                          in_color_listening: "{{in_color_listening}}"
-                          brightness: >-
-                            {%- if states(in_light_night) != 'on' and repeat.index%2 != 0 -%}
-                              255
-                            {%- elif states(in_light_night) != 'on' and repeat.index%2 == 0 -%}
-                              30
-                            {%- elif repeat.index%2 != 0 -%}
-                              10
-                            {%- else -%}
-                              3
-                            {%- endif -%}
+                          - condition: state
+                            entity_id: !input in_light
+                            state: "on"
 
-                      - condition: state
-                        entity_id: !input in_light
-                        state: "on"
+                          - wait_for_trigger:
+                              - platform: state
+                                entity_id: !input in_station
+                                attribute: alice_state
+                                # from: SPEAKING
+                              - platform: state
+                                entity_id: !input in_light
+                                from: "off"
+                            timeout: '00:00:0{{in_speed_loop}}'
 
-                      - service: light.turn_on
-                        data:
-                          transition: "{{in_speed_loop}}"
-                          brightness: "{{brightness}}"
-                          effect: Solid
-                          rgb_color: "{{in_color_speaking}}"
-                        target: 
-                          entity_id: !input in_light
-
-                      - condition: not
-                        conditions:
+            - conditions:
+                - condition: state
+                  entity_id: !input in_station
+                  attribute: alice_state
+                  state: SPEAKING
+              sequence:
+                    - repeat:
+                        until:
                           - condition: or
                             conditions:
                               - condition: state
@@ -236,24 +200,74 @@ action:
                                 entity_id: !input in_station
                                 attribute: alice_state
                                 state: IDLE
+                        sequence:
 
-                      - condition: state
-                        entity_id: !input in_light
-                        state: "on"
+                          - variables:
+                              in_color_listening: "{{in_color_listening}}"
+                              brightness: >-
+                                {%- if states(in_light_night) != 'on' and repeat.index%2 != 0 -%}
+                                  255
+                                {%- elif states(in_light_night) != 'on' and repeat.index%2 == 0 -%}
+                                  30
+                                {%- elif repeat.index%2 != 0 -%}
+                                  10
+                                {%- else -%}
+                                  3
+                                {%- endif -%}
 
-                      - wait_for_trigger:
-                          - platform: state
-                            entity_id: !input in_station
-                            attribute: alice_state
-                            from: LISTENING
-                          - platform: state
-                            entity_id: !input in_station
-                            attribute: alice_state
-                            from: IDLE
-                          - platform: state
+                          - condition: state
                             entity_id: !input in_light
-                            from: "off"
-                        timeout: '00:00:0{{in_speed_loop}}'
+                            state: "on"
+
+                          - service: light.turn_on
+                            data:
+                              transition: "{{in_speed_loop}}"
+                              brightness: "{{brightness}}"
+                              effect: Solid
+                              rgb_color: "{{in_color_speaking}}"
+                            target: 
+                              entity_id: !input in_light
+
+                          - condition: not
+                            conditions:
+                              - condition: or
+                                conditions:
+                                  - condition: state
+                                    entity_id: !input in_station
+                                    attribute: alice_state
+                                    state: LISTENING
+                                  - condition: state
+                                    entity_id: !input in_station
+                                    attribute: alice_state
+                                    state: IDLE
+
+                          - condition: state
+                            entity_id: !input in_light
+                            state: "on"
+
+                          - wait_for_trigger:
+                              - platform: state
+                                entity_id: !input in_station
+                                attribute: alice_state
+                                from: LISTENING
+                              - platform: state
+                                entity_id: !input in_station
+                                attribute: alice_state
+                                from: IDLE
+                              - platform: state
+                                entity_id: !input in_light
+                                from: "off"
+                            timeout: '00:00:0{{in_speed_loop}}'
+
+          default:
+            - service: light.turn_on
+              data:
+                transition: 0
+                brightness: 1
+                effect: Solid
+                rgb_color: "{{in_color_speaking}}"
+              target: 
+                entity_id: !input in_light
 
   - condition: state
     entity_id: !input in_light
