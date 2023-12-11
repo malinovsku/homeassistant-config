@@ -65,9 +65,9 @@ led_matrix = (img_data[...,0]>>3).astype(np.uint16) << 11 | (img_data[...,1]>>2)
 # Flatten the numpy array to a 1D list
 led_matrix = led_matrix.flatten().tolist()
 # led_matrix_agg_rgb = img_data_agg_rgb.astype(np.uint16)
-aggregate_rgb = img_data_aggregate.astype(np.uint8).flatten().tolist()
+aggregate_rgb = img_data_aggregate.astype(np.uint16).flatten().tolist()
 
 
 attributes = {"led_matrix": led_matrix, "aggregate_rgb": aggregate_rgb,}
 logger.debug(f"create_matrix_pic.py: aggregate_rgb: {aggregate_rgb}   led_matrix: {led_matrix}")
-hass.states.set(f"sensor.{name_sensor}_8x8_pic", "on", attributes)
+hass.states.set(f"sensor.{name_sensor}_{length}x8_pic", "on", attributes)
