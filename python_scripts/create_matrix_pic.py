@@ -1,3 +1,17 @@
+# service: python_script.exec
+# data:
+#   cache: false
+#   file: /config/python_scripts/create_matrix_pic.py
+#   media_player: media_player.yandex_station_komnata
+
+
+# service: python_script.exec
+# data:
+#   cache: false
+#   file: /config/python_scripts/create_matrix_pic.py
+#   url_pic: https://bipbap.ru/wp-content/uploads/2017/04/priroda_kartinki_foto_03.jpg
+#   name_pic: ентити будущего сенсора, например picpic ( не обзятельно, если нету, то последняя группа слов после / в url_pic )
+
 import numpy as np
 from PIL import Image
 import requests
