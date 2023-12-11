@@ -39,4 +39,4 @@ new_attributes = {
                 }
 
 logger.info(f"Album Art led_matrix: {led_matrix}")
-hass.states.set("sensor.8x8_pic", "on", attributes=new_attributes)
+hass.states.set(f"sensor.{media_player.replace('media_player.', '')}_8x8_pic", "on", attributes=new_attributes)
