@@ -6,7 +6,7 @@ from io import BytesIO
 
 media_player = data["media_player"]
 
-entity_picture_local = name1 = hass.states.get(media_player).attributes['entity_picture_local']
+entity_picture_local = hass.states.get(media_player).attributes['entity_picture_local']
 
 
 response = requests.get(f"http://homeassistant.local:8123{entity_picture_local}")
