@@ -1,19 +1,21 @@
-# service: python_script.exec
-# data:
-#   cache: false
-#   file: /config/python_scripts/create_matrix_pic.py
-#   media_player: media_player.yandex_station_komnata
-#   name_sensor: ентити будущего сенсора, например picpic ( не обзятельно, если нету, то entity media_player )
+"""
+Примеры вызова службы:
+    service: python_script.exec
+    data:
+        cache: false
+        file: /config/python_scripts/create_matrix_pic.py
+        media_player: media_player.yandex_station_komnata
+        name_sensor: ентити будущего сенсора, например picpic ( не обзятельно, если нету, то entity media_player )
 
+    service: python_script.exec
+    data:
+        cache: false
+        file: /config/python_scripts/create_matrix_pic.py
+        url_picture: https://bipbap.ru/wp-content/uploads/2017/04/priroda_kartinki_foto_03.jpg
+        name_sensor: ентити будущего сенсора, например picpic ( не обзятельно, если нету, то последняя группа слов после / в url_pic )
 
-# service: python_script.exec
-# data:
-#   cache: false
-#   file: /config/python_scripts/create_matrix_pic.py
-#   url_picture: https://bipbap.ru/wp-content/uploads/2017/04/priroda_kartinki_foto_03.jpg
-#   name_sensor: ентити будущего сенсора, например picpic ( не обзятельно, если нету, то последняя группа слов после / в url_pic )
-
-# После успешного выполнения будет создан sensor c входным name_sensor или заменой описанной выше + _8x8_pic с данными в атрибуте led_matrix
+После успешного выполнения будет создан sensor c входным name_sensor или заменой описанной выше + _8x8_pic, данные матрицы в атрибуте led_matrix
+"""
 
 import numpy as np
 from PIL import Image
