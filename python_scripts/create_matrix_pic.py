@@ -69,5 +69,5 @@ aggregate_rgb = img_data_aggregate.astype(np.uint8).flatten().tolist()
 
 
 attributes = {"led_matrix": led_matrix, "aggregate_rgb": aggregate_rgb,}
-logger.warning(f"create_matrix_pic.py: aggregate_rgb: {aggregate_rgb}   led_matrix: {led_matrix}")
+logger.debug(f"create_matrix_pic.py: aggregate_rgb: {aggregate_rgb}   led_matrix: {led_matrix}")
 hass.states.set(f"sensor.{name_sensor}_8x8_pic", "on", attributes)
