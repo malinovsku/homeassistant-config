@@ -16,7 +16,19 @@
         name_sensor: ентити будущего сенсора, например picpic ( не обзятельно, если нету, то последняя группа слов после / в url_pic )
         length: 32 - длина иконки, по умолчанию 8
 
-После успешного выполнения будет создан sensor c входным name_sensor или заменой описанной выше + _{length}x8_pic, данные матрицы в атрибуте led_matrix, общий цвет aggregate_rgb
+    service: python_script.exec
+    data:
+        cache: false
+        file: /config/python_scripts/create_matrix_pic.py
+        media_player: media_player.yandex_station_komnata
+        device: koridor_matrix_display
+        text: Например шаблон
+        screen_time: 10
+        lifetime: 5
+        default_font: True
+
+*После успешного выполнения будет создан sensor c входным name_sensor или заменой описанной выше + _{length}x8_pic, данные матрицы в атрибуте led_matrix, общий цвет aggregate_rgb
+**Если в параметрах указан device - имя устройства матрицы, то вместо создания\обновления сенсора, будет запускаться сервисы bitmap_small на 8 или bitmap_screen на 32. Доступны дополнительные необзятальные параметры text\lifetime\screen_time\default_font соответсвтенно службам esphome.
 """
 
 import numpy as np
@@ -29,6 +41,12 @@ media_player = data.get("media_player", None)
 url_picture = data.get("url_picture", None)
 name_sensor = data.get("name_sensor", None)
 length = int(data.get("length", 8))
+# Переменные для сервисов
+device = data.get("device", None)
+text = data.get("text", "text")
+lifetime = data.get("lifetime", 5)
+screen_time = data.get("lifscreen_timeetime", 10)
+default_font = data.get("default_font", True)
 
 if media_player != None:
     entity_picture = hass.states.get(media_player).attributes['entity_picture']
@@ -67,7 +85,25 @@ led_matrix = led_matrix.flatten().tolist()
 # led_matrix_agg_rgb = img_data_agg_rgb.astype(np.uint16)
 aggregate_rgb = img_data_aggregate.astype(np.uint16).flatten().tolist()
 
-
-attributes = {"led_matrix": led_matrix, "aggregate_rgb": aggregate_rgb,}
 logger.debug(f"create_matrix_pic.py: aggregate_rgb: {aggregate_rgb}   led_matrix: {led_matrix}")
-hass.states.set(f"sensor.{name_sensor}_{length}x8_pic", "on", attributes)
+
+if device == None:
+    attributes = {"led_matrix": led_matrix, "aggregate_rgb": aggregate_rgb,}
+    hass.states.set(f"sensor.{name_sensor}_{length}x8_pic", "on", attributes)
+else:
+    if length == 8:
+        hass.services.call('esphome', f'{device}_bitmap_small', {
+                            "text": text,
+                            "icon": str(led_matrix),
+                            "lifetime": lifetime,
+                            "screen_time": screen_time,
+                            "default_font": default_font,
+                            "r": aggregate_rgb[0],
+                            "g": aggregate_rgb[1],
+                            "b": aggregate_rgb[2] })
+    else:
+        hass.services.call('esphome', f'{device}_bitmap_screen', {
+                            "icon": str(led_matrix),
+                            "lifetime": lifetime,
+                            "screen_time": screen_time })
+
