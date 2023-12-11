@@ -12,6 +12,8 @@
 #   url_pic: https://bipbap.ru/wp-content/uploads/2017/04/priroda_kartinki_foto_03.jpg
 #   name_pic: ентити будущего сенсора, например picpic ( не обзятельно, если нету, то последняя группа слов после / в url_pic )
 
+# После успешного выполнения будет создан объект с доменом matrix_8x8, например matrix_8x8.yandex_station_komnata
+
 import numpy as np
 from PIL import Image
 import requests
@@ -53,5 +55,5 @@ led_matrix = led_matrix.flatten().tolist()
 new_attributes = {"led_matrix": led_matrix,}
 
 logger.debug(f"create_matrix_pic.py: {led_matrix}")
-hass.states.set(f"sensor.{media_player.replace('media_player.', '')}_8x8_pic", "on", attributes=new_attributes)
-# hass.states.set("sensor.8x8_pic", "on", attributes=new_attributes)
+hass.states.set(f"matrix_8x8.{media_player.replace('media_player.', '')}", "on", attributes=new_attributes)
+# hass.states.set(f"sensor.8x8_pic", "on", attributes=new_attributes)
