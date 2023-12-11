@@ -54,3 +54,4 @@ new_attributes = {"led_matrix": led_matrix,}
 
 logger.debug(f"create_matrix_pic.py: {led_matrix}")
 hass.states.set(f"sensor.{media_player.replace('media_player.', '')}_8x8_pic", "on", attributes=new_attributes)
+# hass.states.set("sensor.8x8_pic", "on", attributes=new_attributes)
