@@ -4,14 +4,17 @@ import requests
 from io import BytesIO
 
 
-media_player = data["media_player"]
+media_player = data.get("media_player", None)
+url_pic = data.get("url_pic", None)
 
-entity_picture_local = hass.states.get(media_player).attributes['entity_picture_local']
+if media_player != None:
+    entity_picture_local = name1 = hass.states.get(media_player).attributes['entity_picture_local']
+    url_pic = f"http://localhost:8123{entity_picture_local}"
+else:
+    media_player = data.get("name_pic", url_pic.split('/')[len(url_pic.split('/'))-1].replace('.', '_'))
 
-
-response = requests.get(f"http://homeassistant.local:8123{entity_picture_local}")
+response = requests.get(url_pic)
 img = Image.open(BytesIO(response.content))
-
 
 img = img.convert("RGB")
 img.thumbnail((64, 64), Image.Resampling.LANCZOS)
@@ -26,17 +29,14 @@ img = img.resize((8, 8))
 # Convert the image data to a numpy array
 img_data = np.array(img)
 
-                # Map the RGB values to 16-bit color values
-img_data = img_data * 257
-led_matrix = ((img_data[:, :, 0] >> 3) << 11) | ((img_data[:, :, 1] >> 2) << 5) | (img_data[:, :, 2] >> 3)
+# Assemble components into RGB565 uint16 image
+led_matrix = (img_data[...,0]>>3).astype(np.uint16) << 11 | (img_data[...,1]>>2).astype(np.uint16) << 5 | (img_data[...,2]>>3).astype(np.uint16)
 
-                # Flatten the numpy array to a 1D list
+# Flatten the numpy array to a 1D list
 led_matrix = led_matrix.flatten().tolist()
 
-                # Log the LED matrix
-new_attributes = {
-                    "album_art": led_matrix,
-                }
+# Log the LED matrix
+new_attributes = {"led_matrix": led_matrix,}
 
-logger.info(f"Album Art led_matrix: {led_matrix}")
+logger.debug(f"create_matrix_pic.py: {led_matrix}")
 hass.states.set(f"sensor.{media_player.replace('media_player.', '')}_8x8_pic", "on", attributes=new_attributes)
