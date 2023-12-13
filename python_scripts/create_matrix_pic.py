@@ -25,9 +25,9 @@
         text: Например шаблон
         screen_time: 10
         lifetime: 5
-        default_font: True
-        text_color: [255, 255, 255] # Список цветов R G B
-        black_threshold: 150 # для определения минимальных значений text_color при автоматическом, во избежании черного цвета текста, по умолчанию 150
+        default_font: True 
+        text_color: # Список цветов текста R G B. Не обязательно
+        black_threshold: 150 # Для определения минимальных значений text_color при автоматическом, во избежании черного цвета текста, по умолчанию 150
 
 *После успешного выполнения будет создан sensor c входным name_sensor или заменой описанной выше + _{length}x8_pic, 
 данные матрицы в атрибуте led_matrix, общий цвет aggregate_rgb
@@ -52,7 +52,7 @@ text = data.get("text", "text")
 lifetime = data.get("lifetime", 5)
 screen_time = data.get("lifscreen_timeetime", 10)
 default_font = data.get("default_font", True)
-text_color = data.get("text_color", [255, 255, 255])
+text_color = data.get("text_color", None)
 black_threshold = data.get("black_threshold", 150)
 
 if media_player != None:
@@ -93,13 +93,18 @@ led_matrix = (img_data[...,0]>>3).astype(np.uint16) << 11 | (img_data[...,1]>>2)
 led_matrix = led_matrix.flatten().tolist()
 aggregate_rgb = img_data_aggregate.astype(np.uint16).flatten().tolist()
 
-if aggregate_rgb[0] > black_threshold and aggregate_rgb[1] > black_threshold and aggregate_rgb[2] > black_threshold:
-    text_color = aggregate_rgb
+# Color text service
+if text_color == None:
+    if aggregate_rgb[0] < black_threshold and aggregate_rgb[1] < black_threshold and aggregate_rgb[2] < black_threshold:
+        delta = 255 / max(aggregate_rgb)
+        text_color = [int(aggregate_rgb[0] * delta), int(aggregate_rgb[1] * delta), int(aggregate_rgb[2] * delta)]
+    else:
+        text_color = aggregate_rgb
 
 logger.debug(f"create_matrix_pic.py: text_color: {text_color}  aggregate_rgb: {aggregate_rgb}  led_matrix: {led_matrix}")
 
 if device == None:
-    attributes = {"led_matrix": led_matrix, "aggregate_rgb": aggregate_rgb,}
+    attributes = {"led_matrix": led_matrix, "aggregate_rgb": aggregate_rgb, "text_color": text_color,}
     hass.states.set(f"sensor.{name_sensor}_{length}x8_pic", "on", attributes)
 else:
     if length == 8:
