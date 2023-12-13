@@ -27,7 +27,6 @@
         lifetime: 5
         default_font: True 
         text_color: # Список цветов текста R G B. Не обязательно
-        black_threshold: 150 # Для определения минимальных значений text_color при автоматическом, во избежании черного цвета текста, по умолчанию 150
 
 *После успешного выполнения будет создан sensor c входным name_sensor или заменой описанной выше + _{length}x8_pic, 
 данные матрицы в атрибуте led_matrix, общий цвет aggregate_rgb
@@ -41,6 +40,8 @@ from PIL import Image, ImageFilter
 import requests
 from io import BytesIO
 
+black_threshold = 150 # Минимальный уровень всех цветов для текста, во избежании черного текста
+delta_resize = 1.5 # Используется при уменьшении картники в цикле, размер изображения делится на данный параметр, пока не достигнет минимума 8\32
 
 media_player = data.get("media_player", None)
 url_picture = data.get("url_picture", None)
@@ -53,7 +54,7 @@ lifetime = data.get("lifetime", 5)
 screen_time = data.get("lifscreen_timeetime", 10)
 default_font = data.get("default_font", True)
 text_color = data.get("text_color", None)
-black_threshold = data.get("black_threshold", 150)
+
 
 if media_player != None:
     entity_picture = hass.states.get(media_player).attributes['entity_picture']
@@ -70,17 +71,15 @@ img = Image.open(BytesIO(response.content))
 
 img = img.convert("RGB")
 img = img.filter(ImageFilter.BLUR)
-img.thumbnail((64, 64), Image.Resampling.LANCZOS)
-img_agg = img
+img.thumbnail((img.height, img.width), Image.Resampling.LANCZOS)
+img = img.convert("RGB")
 
-# Ensure the image is in RGB format
-if img.mode != "RGB":
-    img = img.convert("RGB")
+while img.height > int(length + length / delta_resize):
+    img = img.filter(ImageFilter.BLUR)
+    img = img.resize((int(img.height/delta_resize), int(img.width/delta_resize)), Image.Resampling.LANCZOS)
 
-# Resize the image to 8x8 or 32x8
 img = img.resize((length, 8), Image.Resampling.LANCZOS)
-img_aggregate = img_agg.filter(ImageFilter.BLUR)
-img_aggregate = img_agg.resize((1, 1), Image.Resampling.LANCZOS)
+img_aggregate = img.resize((1, 1), Image.Resampling.LANCZOS)
 
 # Convert the image data to a numpy array
 img_data = np.array(img)
