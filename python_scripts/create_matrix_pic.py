@@ -52,9 +52,11 @@ delta_resize = int(data.get("delta_resize", 1)) # Если указана 1, т�
 device = data.get("device", None)
 text = data.get("text", "text")
 lifetime = data.get("lifetime", 5)
-screen_time = data.get("lifscreen_timeetime", 10)
+screen_time = data.get("screen_time", 10)
 default_font = data.get("default_font", True)
 text_color = data.get("text_color", None)
+screen_id = data.get("screen_id", "")
+screen_id = f"#{screen_id}" if screen_id != "" else screen_id
 
 
 if media_player != None:
@@ -114,7 +116,7 @@ else:
     if length == 8:
         hass.services.call('esphome', f'{device}_bitmap_small', {
                             "text": text,
-                            "icon": str(led_matrix),
+                            "icon": f"{str(led_matrix)}{screen_id}",
                             "lifetime": lifetime,
                             "screen_time": screen_time,
                             "default_font": default_font,
@@ -123,6 +125,6 @@ else:
                             "b": text_color[2] })
     else:
         hass.services.call('esphome', f'{device}_bitmap_screen', {
-                            "icon": str(led_matrix),
+                            "icon": f"{str(led_matrix)}{screen_id}",
                             "lifetime": lifetime,
                             "screen_time": screen_time })
