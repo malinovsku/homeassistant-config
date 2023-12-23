@@ -56,7 +56,7 @@ screen_time = data.get("screen_time", 10)
 default_font = data.get("default_font", True)
 text_color = data.get("text_color", None)
 screen_id = data.get("screen_id", "")
-screen_id = f"#{screen_id}" if screen_id != "" else screen_id
+screen_id = f"|{screen_id}" if screen_id != "" else screen_id
 
 
 if media_player != None:
