@@ -1,11 +1,24 @@
+'''
+*Параметры в data, кроме file, не обязательны, их default расписаны ниже с комментариями
+
+service: python_script.exec
+data:
+    file: /config/python_scripts/keenetic_backup.py
+    ip: "192.168.1.1"
+    folder_bk: "./"
+    login: "admin"
+    passw: "admin"
+    name_file: "startup-config"
+'''
+
 import requests
 import hashlib
 
-ip_default = "192.168.1.1"   # если не указан параметр "ip" при вызове скрипта
-folder_default = "./"   # если не указан параметр "folder_bk" при вызове скрипта
-login_default = "admin"     # если не указан параметр "login" при вызове скрипта
-passw_default = "admin"    # если не указан параметр "passw" при вызове скрипта
-name_file_default = "startup-config"    # если не указан параметр "name_file" при вызове скрипта
+ip_default = "192.168.1.1" # если не указан параметр "ip" при вызове скрипта
+folder_default = "./" # если не указан параметр "folder_bk" при вызове скрипта
+login_default = "admin" # если не указан параметр "login" при вызове скрипта
+passw_default = "admin" # если не указан параметр "passw" при вызове скрипта
+name_file_default = "startup-config" # если не указан параметр "name_file" при вызове скрипта
 
 url = f"http://{data.get('ip', ip_default)}"
 folder_bk = data.get('folder_bk', folder_default)
