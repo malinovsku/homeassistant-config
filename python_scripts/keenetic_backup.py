@@ -13,7 +13,7 @@ md5 = hashlib.md5(md5.encode('utf-8'))
 sha = response_ver.headers["X-NDM-Challenge"] + md5.hexdigest()
 sha = hashlib.sha256(sha.encode('utf-8'))
 response_auth = seskeen.post(f"{url}/auth", json={"login": login, "password": sha.hexdigest()})
-response = seskeen.get(f"{url}/ci/startup-config", json={"login": login, "password": sha.hexdigest()})
+response = seskeen.get(f"{url}/ci/startup-config")
 seskeen.close()
 
 with open(f"{folder_bk}/startup-config.txt", "wb") as file_backup:
