@@ -14,17 +14,11 @@ data:
 import requests
 import hashlib
 
-ip_default = "192.168.1.1" # если не указан параметр "ip" при вызове скрипта
-folder_default = "./" # если не указан параметр "folder_bk" при вызове скрипта
-login_default = "admin" # если не указан параметр "login" при вызове скрипта
-passw_default = "admin" # если не указан параметр "passw" при вызове скрипта
-name_file_default = "startup-config" # если не указан параметр "name_file" при вызове скрипта
-
-url = f"http://{data.get('ip', ip_default)}"
-folder_bk = data.get('folder_bk', folder_default)
-login = data.get('login', login_default)
-passw = data.get('passw', passw_default)
-name_file = data.get('name_file', name_file_default)
+url = f"http://{data.get('ip', '192.168.1.1')}" # ip адрес - '192.168.1.1' , если не указан параметр "ip" при вызове скрипта
+folder_bk = data.get('folder_bk', './') # папка для сохранения - './' , если не указан параметр "folder_bk" при вызове скрипта
+login = data.get('login', 'admin') # логин - 'admin', если не указан параметр "login" при вызове скрипта
+passw = data.get('passw', 'admin') # пароль - 'admin', если не указан параметр "passw" при вызове скрипта
+name_file = data.get('name_file', 'startup-config') # имя файла - 'startup-config', если не указан параметр "name_file" при вызове скрипта
 
 seskeen = requests.session()    
 response_ver = seskeen.get(f"{url}/auth")
