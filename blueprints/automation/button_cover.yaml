@@ -10,6 +10,7 @@ blueprint:
       name: Штора
       selector:
         entity:
+          domain: cover
     in_wait_time:
       name: Время ожидания в секундах
       default: 60
@@ -18,10 +19,28 @@ blueprint:
           min: 0
           max: 200
           mode: slider
+    in_pos_close:
+      name: Время ожидания в секундах
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: slider
+    in_pos_open:
+      name: Время ожидания в секундах
+      default: 100
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: slider
 mode: single
 max_exceeded: silent
 variables:
   in_cover: !input in_cover
+  in_pos_close: !input in_pos_close
+  in_pos_open: !input in_pos_open
 trigger: !input in_trigger
 condition: []
 action:
@@ -42,11 +61,21 @@ action:
                   value_template: "{{wait.trigger.id is not defined}}"
               then:
                 - stop: ""
-        - service: cover.{{repeat.item}}
+        # - service: cover.{{repeat.item}}
+        #   metadata: {}
+        #   data: {}
+        #   target:
+        #     entity_id: !input in_cover
+
+        - service: cover.set_cover_position
           metadata: {}
-          data: {}
+          data:
+            position: "{{repeat.item}}"
           target:
             entity_id: !input in_cover
+
+
+
         - wait_for_trigger: !input in_trigger
           timeout:
             hours: 0
@@ -64,4 +93,4 @@ action:
                 entity_id: !input in_cover
           else:
             - stop: ""
-      for_each: "{{['open_cover', 'close_cover']|sort(reverse=state_attr(in_cover, 'current_position') < 50)}}"
+      for_each: "{{[in_pos_open, in_pos_close]|sort(reverse=state_attr(in_cover, 'current_position')|int(100) < 50)}}"
