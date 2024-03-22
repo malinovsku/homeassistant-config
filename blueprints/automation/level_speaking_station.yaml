@@ -18,12 +18,14 @@ blueprint:
       selector:
         entity:
           domain: media_player
-    in_level_voice_entity:
-      name: Объект для громкости
-      description: Объект для громкости
+    in_level_voice:
+      name: Громкость для установки
+      description: Громкость для установки
       selector:
-        entity:
-          domain: input_number
+        number:
+          min: 0
+          max: 1
+          step: 0.05
     in_speaking_condition:
       name: Запускать при событии SPEAKING
       description: Запускать при событии SPEAKING.
@@ -42,9 +44,18 @@ blueprint:
       default: []
       selector:
         action:
+    in_time_idle:
+      name: (Доп) Ожидание в состоянии IDLE, прежде чем вернуть
+      description: Ожидание в состоянии IDLE, прежде чем вернуть
+      default: 2000
+      selector:
+        number:
+          min: 0
+          max: 3000
+          step: 100
 
 trace:
-  stored_traces: 100
+  stored_traces: 30
 
 mode: parallel
 
@@ -52,10 +63,10 @@ max: 100
 
 variables:
   in_station: !input in_station
-  in_level_voice_entity: !input in_level_voice_entity
   in_pause_play: !input in_pause_play
   in_speaking_condition: !input in_speaking_condition
-  level_voice: "{{states(in_level_voice_entity)|float(0.0)}}"
+  in_time_idle: !input in_time_idle
+  level_voice: !input in_level_voice
   old_level_voice: "{{state_attr(in_station, 'volume_level')}}"
   state_station: "{{states(in_station)}}"
 
@@ -134,7 +145,7 @@ action:
         for:
           hours: 0
           minutes: 0
-          seconds: 3
+          seconds: "{{in_time_idle/1000}}"
     timeout: '00:10:00'
   - if:
       - condition: template
