@@ -9,15 +9,17 @@ blueprint:
       description: Колонка
       selector:
         entity:
-          domain: media_player
-          integration: yandex_station
+          filter:
+            - domain: media_player
+            - integration: yandex_station
     in_all_station:
       name: Группа станций
       description: Группа станций для события station_volume, при котором срабатывает активация вместо SPEAKING.
       default: media_player.yandex_station_vse
       selector:
         entity:
-          domain: media_player
+          filter:
+            - domain: media_player
     in_level_voice:
       name: Громкость для установки
       description: Громкость для установки
@@ -128,11 +130,11 @@ action:
       - condition: template
         value_template: "{{in_pause_play and states_station == 'playing'}}"
     then:
-      - service: media_player.media_pause
+      - action: media_player.media_pause
         data: {}
         target:
           entity_id: !input in_station
-  - service: media_player.volume_set
+  - action: media_player.volume_set
     target:
       entity_id: "{{in_station}}"
     data:
@@ -151,7 +153,7 @@ action:
       - condition: template
         value_template: "{{state_attr(in_station, 'volume_level')|float(0.0) == level_voice or state_attr(in_station, 'is_volume_muted') == true}}"
     then:
-      - service: media_player.volume_set
+      - action: media_player.volume_set
         target:
           entity_id: "{{in_station}}"
         data:
@@ -160,7 +162,7 @@ action:
       - condition: template
         value_template: "{{in_pause_play and states_station == 'playing'}}"
     then:
-      - service: media_player.media_play
+      - action: media_player.media_play
         target:
               entity_id: !input in_station
         data: {}
