@@ -1,4 +1,4 @@
-"""
+'''
 Примеры вызова службы:
     service: python_script.exec
     data:
@@ -7,6 +7,7 @@
         media_player: media_player.yandex_station_komnata
         name_sensor: # ентити будущего сенсора, например picpic ( не обзятельно, если нету, то entity media_player )
         length: 32 # длина иконки, по умолчанию 8
+        height: 8 # высота иконки, по умолчанию 8
 
     service: python_script.exec
     data:
@@ -25,16 +26,16 @@
         text: Например шаблон
         screen_time: 10
         lifetime: 5
-        default_font: True 
+        default_font: True
         text_color: # Список цветов текста R G B. Не обязательно
-        delta_resize: 2 # Используется при уменьшении картники в цикле, размер изображения делится на данный параметр, пока не достигнет минимума 8\32
+        delta_resize: 2 # Используется при уменьшении картники в цикле, размер изображения делится на данный параметр, пока не достигнет минимума 8\16\32
 
-*После успешного выполнения будет создан sensor c входным name_sensor или заменой описанной выше + _{length}x8_pic, 
+*После успешного выполнения будет создан sensor c входным name_sensor или заменой описанной выше + _{length}x{height}_pic,
 данные матрицы в атрибуте led_matrix, общий цвет aggregate_rgb
-**Если в параметрах указан device - имя устройства матрицы, то вместо создания\обновления сенсора, 
-будет запускаться сервисы bitmap_small на 8 или bitmap_screen на 32. 
-Доступны дополнительные необзятальные параметры text\lifetime\screen_time\default_font\text_color соответсвтенно службам esphome.
-"""
+**Если в параметрах указан device - имя устройства матрицы, то вместо создания\обновления сенсора,
+будет запускаться сервисы bitmap_small на 8, show_bitmap на 16 или bitmap_screen на 32.
+Доступны дополнительные необзятальные параметры text|lifetime|screen_time|default_font|text_color соответсвтенно службам esphome.
+'''
 
 import numpy as np
 from PIL import Image, ImageFilter
@@ -43,11 +44,13 @@ from io import BytesIO
 
 black_threshold = 150 # Минимальный уровень всех цветов для текста, во избежании черного текста
 
+
 media_player = data.get("media_player", None)
 url_picture = data.get("url_picture", None)
 name_sensor = data.get("name_sensor", None)
 length = int(data.get("length", 8))
-delta_resize = int(data.get("delta_resize", 1)) # Если указана 1, то сразу 64х64 потом 32\8х8
+height = int(data.get("height", 8))
+delta_resize = int(data.get("delta_resize", 1)) # Если указана 1, то сразу 64х64 потом 32\8х8\16x16
 # Переменные для сервисов
 device = data.get("device", None)
 text = data.get("text", "text")
@@ -67,7 +70,7 @@ if media_player != None:
         url_picture = entity_picture
     name_sensor = name_sensor if name_sensor != None else f"{media_player.replace('media_player.', '')}"
 else:
-    name_sensor = name_sensor if name_sensor != None else f"{url_picture.split('/')[len(url_picture.split('/'))-1].replace('.', '_')}" 
+    name_sensor = name_sensor if name_sensor != None else f"{url_picture.split('/')[len(url_picture.split('/'))-1].replace('.', '_')}"
 
 response = requests.get(url_picture)
 img = Image.open(BytesIO(response.content))
@@ -79,13 +82,13 @@ img = img.convert("RGB")
 
 if delta_resize != 1:
     while img.height > int(length + length / delta_resize):
-        img = img.resize((int(img.height/delta_resize), int(img.width/delta_resize)), Image.Resampling.LANCZOS)
+        img = img.resize((int(img.height / delta_resize), int(img.width / delta_resize)), Image.Resampling.LANCZOS)
         img = img.filter(ImageFilter.BLUR)
 else:
     img.resize((64, 64), Image.Resampling.LANCZOS)
     img = img.filter(ImageFilter.BLUR)
 
-img = img.resize((length, 8), Image.Resampling.LANCZOS)
+img = img.resize((length, height), Image.Resampling.LANCZOS)
 img_aggregate = img.resize((1, 1), Image.Resampling.LANCZOS)
 
 # Convert the image data to a numpy array
@@ -111,7 +114,7 @@ logger.debug(f"create_matrix_pic.py: text_color: {text_color}  aggregate_rgb: {a
 
 if device == None:
     attributes = {"led_matrix": led_matrix, "aggregate_rgb": aggregate_rgb, "text_color": text_color,}
-    hass.states.set(f"sensor.{name_sensor}_{length}x8_pic", "on", attributes)
+    hass.states.set(f"sensor.{name_sensor}_{length}x{height}_pic", "on", attributes)
 else:
     if length == 8:
         hass.services.call('esphome', f'{device}_bitmap_small', {
@@ -123,6 +126,9 @@ else:
                             "r": text_color[0],
                             "g": text_color[1],
                             "b": text_color[2] })
+    elif length == 16:
+        hass.services.call('esphome', f'{device}_show_bitmap', {
+                            "bitmap": f"{str(led_matrix)}" })
     else:
         hass.services.call('esphome', f'{device}_bitmap_screen', {
                             "icon": f"{str(led_matrix)}{screen_id}",
