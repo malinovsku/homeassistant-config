@@ -1,0 +1,70 @@
+sequence:
+  - action: python_script.exec
+    data:
+      cache: false
+      file: /config/python_scripts/statistics.py
+      start_time: "{{start_time}}"
+      end_time: "{{end_time|default(None)}}"
+      statistic_ids: "{{statistic_ids}}"
+      period: "{{period}}"
+      types: "{{types}}"
+      date_format: "{{date_format|default(None)}}"
+    response_variable: response
+  - stop: ""
+    response_variable: response
+fields:
+  start_time:
+    selector:
+      datetime: {}
+    name: Start time
+    required: true
+    description: Время старта
+  end_time:
+    selector:
+      datetime: {}
+    name: End time
+    required: false
+    description: Время окончания
+  statistic_ids:
+    selector:
+      entity:
+        multiple: true
+    name: Statistic ids
+    required: true
+    description: Объекты для выгрузки статистики
+  period:
+    selector:
+      select:
+        options:
+          - 5minute
+          - hour
+          - day
+          - week
+          - month
+        multiple: false
+    name: Period
+    required: true
+    description: Период
+  types:
+    selector:
+      select:
+        options:
+          - last_reset
+          - max
+          - mean
+          - min
+          - state
+          - sum
+          - change
+        multiple: true
+    name: Types
+    required: true
+    description: Тип статистики
+  date_format:
+    selector:
+      text: null
+    name: Date format
+    default: "%Y-%m-%dT%H:%M:%SZ"
+    description: Формат времени
+alias: statistics_during_period
+description: ""
