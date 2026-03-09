@@ -1,0 +1,188 @@
+blueprint:
+  name: 📸Отправка в Telegram событий Reviews Frigate
+  domain: automation
+  input:
+    in_camera:
+      name: Камера
+      description: Камера для уведомления, имя которой берется для сверки с именем камеры в событии mqtt.
+      selector:
+        entity:
+          domain: camera
+          integration: frigate
+    in_entity_id_tg:
+      name: Объект уведомления telegram для отправки
+      description: Объект уведомления **telegram** для отправки.
+      selector:
+        entity:
+          domain: notify
+          integration: telegram_bot
+    in_text_message:
+      name: Текст сообщения
+      description: Доступны переменные camera, camera_friendly_name, start_time, end_time, diff_time и шаблоны.
+      default: >
+        *Движение* {{camera_friendly_name}} {{diff_time}}s
+
+        ⏱{{start_time}} по {{end_time}}
+
+        [Ссылка на видео](http://192.168.1.126:5000/api/{{camera}}/start/{{start_ts}}/end/{{end_ts}}/clip.mp4)
+
+        {%if repeat.index > 1%}
+
+        Попытка отправки: {{repeat.index}}
+
+        {%endif%}
+      selector:
+        template:
+    in_condition:
+      name: (Доп) Условия для отправки
+      description: |
+        **Тип дейтсвия выбрать условие!**
+        Условие проверяется перед отправкой сообщения в Telegram.
+        Для дополнительных дейтсвий ниже эта проверка не работает.
+      default: []
+      selector:
+        condition:
+    in_url_server:
+      name: Хост frigate
+      default: http://ccab4aaf-frigate-fa-beta:5000
+      selector:
+        template:
+    in_repeat_count:
+      name: Количество повторов
+      default: "100"
+      selector:
+        template:
+    in_repeat_time:
+      name: Задержка повтора в секундах
+      default: "{{repeat.index * 2}}"
+      selector:
+        template:
+
+trace:
+  stored_traces: 300
+mode: parallel
+max: 1000
+
+variables:
+  in_camera: !input in_camera
+  camera_friendly_name: "{{state_attr(in_camera, 'friendly_name').replace('-', ' ')}}"
+  url_host: !input in_url_server
+  repeat_count: !input in_repeat_count
+  diff_time: 0
+
+trigger_variables:
+  in_camera: !input in_camera
+  camera: "{{in_camera|replace('camera.', '')}}"
+
+trigger:
+  - platform: mqtt
+    topic: frigate/reviews
+    payload: "{{camera}}/end"
+    value_template: "{{value_json['after']['camera']|lower|replace('-','_')}}/{{ value_json['type']}}"
+    id: frigate_event
+
+  - trigger: event
+    event_type: telegram_callback
+    id: telegram_callback
+
+condition:
+  or:
+    - condition: trigger
+      id: frigate_event
+    - and:
+        - condition: trigger
+          id: telegram_callback
+        - condition: template
+          value_template: "{{trigger.event.data.data.split('-')[0] == '/frigate_clip'}}"
+        - condition: template
+          value_template: "{{trigger.event.data.data.split('-')[1] == camera}}"
+
+action:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: frigate_event
+        sequence:
+          - condition: !input in_condition
+          - variables:
+              reviews_id: "{{trigger.payload_json['after']['id']}}"
+              start_time: >-
+                {{trigger.payload_json['after']['start_time']|timestamp_custom('%Y-%m-%d %H:%M:%S', default='00:00:00')}}
+              end_time: >-
+                {{trigger.payload_json['after']['end_time']|timestamp_custom('%H:%M:%S', default='00:00:00')}}
+              diff_time: >-
+                {{(trigger.payload_json['after']['end_time'] - trigger.payload_json['after']['start_time'])|relative_time|int(0)}}
+              start_ts: "{{ trigger.payload_json['after']['start_time'] - 10 }}"
+              end_ts: "{{ trigger.payload_json['after']['end_time'] + 5 }}"
+              url_video: "{{url_host}}/api/{{camera}}/start/{{start_ts}}/end/{{end_ts}}"
+              repeat_action: true
+          - delay:
+              hours: 0
+              minutes: 0
+              seconds: 10
+              milliseconds: 0
+          - repeat:
+              while:
+                - condition: template
+                  value_template: "{{repeat_action}}"
+                - condition: template
+                  value_template: "{{repeat.index <= repeat_count|int(100)}}"
+              sequence:
+                - action: telegram_bot.send_video
+                  data:
+                    url: "{{url_video}}/preview.mp4"
+                    entity_id: !input in_entity_id_tg
+                    caption: !input in_text_message
+                    inline_keyboard: "Полное видео:/frigate_clip-{{camera}}-{{start_ts}}_{{end_ts}}"
+                  response_variable: response
+                  continue_on_error: true
+                - variables:
+                    repeat_action: >-
+                      {%if response is defined and response.chats is defined and response.chats[0].message_id is defined%}
+                        false
+                      {%else%}
+                        true
+                      {%endif%}
+                  continue_on_error: true
+                - if:
+                    - condition: template
+                      value_template: "{{repeat_action}}"
+                  then:
+                    - data:
+                        name: "{{this.attributes.friendly_name}}"
+                        message: >-
+                          Авто: {{this.context.id}}. Попытки: {{repeat.index}}
+                        entity_id: "{{this.entity_id}}"
+                      continue_on_error: true
+                      action: logbook.log
+                - delay:
+                    hours: 0
+                    minutes: 0
+                    seconds: !input in_repeat_time
+                    milliseconds: 0
+      - conditions:
+          - condition: trigger
+            id: telegram_callback
+        sequence:
+          - variables:
+              start_ts: "{{trigger.event.data.data.split('-')[2].split('_')[0]}}"
+              end_ts: "{{trigger.event.data.data.split('-')[2].split('_')[1]}}"
+              url_video: "{{url_host}}/api/{{camera}}/start/{{start_ts}}/end/{{end_ts}}"
+          - action: telegram_bot.send_chat_action
+            data:
+              chat_action: upload_video
+              entity_id: !input in_entity_id_tg
+          - action: telegram_bot.edit_message_media
+            data:
+              verify_ssl: false
+              entity_id: !input in_entity_id_tg
+              caption: "{{trigger.event.data.message.caption}}"
+              message_id: "{{trigger.event.data.message.message_id}}"
+              media_type: video
+              url: "{{url_host}}/api/{{camera}}/start/{{start_ts}}/end/{{end_ts}}/clip.mp4"
+            continue_on_error: true
+          - action: telegram_bot.answer_callback_query
+            data:
+              show_alert: false
+              message: Видео загружено
+              callback_query_id: "{{trigger.event.data.id}}"
